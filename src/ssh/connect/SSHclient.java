@@ -7,6 +7,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;  
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.regex.PatternSyntaxException;
 
@@ -17,6 +18,7 @@ public class SSHclient {
 	 */
 	public static void main(String[] args) throws JSchException, SftpException, IOException {
 		SSHbasic basic_coonection = new SSHbasic();
+		basic_coonection.makeConnect();
 	}
 
 	static class SSHbasic {
@@ -79,11 +81,11 @@ public class SSHclient {
 	    	} catch (PatternSyntaxException e) {
 	    		e.printStackTrace();
 	    	}
-	    	makeConnect();
+	    	//makeConnect();
 	    }
 	
     	public SSHbasic()  throws JSchException, SftpException, IOException  {	
-    		makeConnect();
+    		//makeConnect();
     	}
     	
     	public void makeConnect()  throws JSchException, SftpException, IOException {
@@ -112,12 +114,15 @@ public class SSHclient {
 	        SftpProgressMonitor monitor=new MyProgressMonitor();
 		    int mode=ChannelSftp.OVERWRITE;
 		    sftp_channel.cd(remote_path);
+		    System.out.println("Remote directory: " + sftp_channel.pwd());
 		    
 		    // Check if local path is valid
 		    File local = new File(local_path);
 		    if (!local.exists()) throw new IOException("Source path is not valid (not exists): "+local_path);
 		    
 		    sftp_channel.lcd(local_path);
+		    System.out.println("Local directory: " + sftp_channel.lpwd());
+		    
 		    
 		    // Create ZIP archive
 		    AppZip appZip = new AppZip(local_path);
@@ -126,40 +131,48 @@ public class SSHclient {
 	    	appZip.zipIt(archive_path);
 	    	File file = new File(archive_path);
 		    String archive = fileName(archive_path);
-		    //File file = new File(local_path+"/"+archive);
+		    System.out.println("Created zip: " + archive_path + archive);		    
 		    if (file.exists()) {
 			    FileInputStream file_stream = new FileInputStream(file);
 			    sftp_channel.put(file_stream, archive, monitor, mode); 
 			    sftp_channel.chgrp(group_id, archive); 
 		    }
 		    sftp_channel.exit();
+		    System.out.println("Archive uploaded.");
 		    	        
-	        channel = session.openChannel("shell");  
+		    // Execute make
+	        channel = session.openChannel("shell"); 
 	        channel.connect();  
-	  
-	        BufferedReader dataIn = new BufferedReader(new InputStreamReader(channel.getInputStream()));  
+	        InputStreamReader isr = new InputStreamReader(channel.getInputStream());
+	        BufferedReader dataIn = new BufferedReader(isr,2056);  
 	        DataOutputStream dataOut = new DataOutputStream(channel.getOutputStream());  
 	        
 	        // send ls command to the server  
 	        dataOut.writeBytes("cd "+remote_path+"\r\n"); 
-	        dataOut.writeBytes("unzip "+archive+"\r\n"); 
+	        dataOut.writeBytes("unzip -o "+archive+"\r\n");
 	        
-	        // Execute make
 	        dataOut.writeBytes("cd "+noExtension(archive)+"\r\n");
 	        dataOut.writeBytes("make\r\n");
 	        dataOut.writeBytes("ls -la\r\n");  
 	        dataOut.flush();  
+	        dataOut.close();
 	  
-	        // print the response   
-	        String line = correct_symbols(dataIn.readLine());  
-	        while(!line.endsWith(endLineStr)) {  
-	            System.out.println(line);  
-	            line = correct_symbols(dataIn.readLine());  
-	        }  
-	        dataIn.close();  
-	        dataOut.close();  
+	     // print the response   
+	        StringBuilder response= new StringBuilder();
+	        System.out.println(dataIn.readLine());
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } else System.out.println("Response ("+response.length()+"):");
+	        System.out.println(response.toString());
+	          
+	        
+	        dataIn.close();
 	        channel.disconnect();  
-	        session.disconnect();  
+	        session.disconnect();
 	        System.exit(0);
 	    }  
     	
@@ -218,6 +231,7 @@ public class SSHclient {
     	 * @return corrected string
     	 */
     	private String correct_symbols(String str) {
+    		if (str == null) return null;
     		String[][] correct_pairs = {{"[34;42m","/"},{"[01;34m",""},{"[0m",""},{"[01;32m","*"},{"[01;31m",""}};
     		for (int i = 0; i < correct_pairs.length; i++) {
     			str = str.replace(correct_pairs[i][0], correct_pairs[i][1]);
