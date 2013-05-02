@@ -7,7 +7,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;  
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.regex.PatternSyntaxException;
 
@@ -144,32 +143,82 @@ public class SSHclient {
 	        channel = session.openChannel("shell"); 
 	        channel.connect();  
 	        InputStreamReader isr = new InputStreamReader(channel.getInputStream());
-	        BufferedReader dataIn = new BufferedReader(isr,2056);  
+	        BufferedReader dataIn = new BufferedReader(isr);  
 	        DataOutputStream dataOut = new DataOutputStream(channel.getOutputStream());  
 	        
 	        // send ls command to the server  
 	        dataOut.writeBytes("cd "+remote_path+"\r\n"); 
-	        dataOut.writeBytes("unzip -o "+archive+"\r\n");
-	        
-	        dataOut.writeBytes("cd "+noExtension(archive)+"\r\n");
-	        dataOut.writeBytes("make\r\n");
-	        dataOut.writeBytes("ls -la\r\n");  
 	        dataOut.flush();  
-	        dataOut.close();
-	  
-	     // print the response   
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        // print the response   
 	        StringBuilder response= new StringBuilder();
-	        System.out.println(dataIn.readLine());
 	        while(dataIn.ready()) {
 	        	char c = (char)dataIn.read();
 	        	response.append(c);       
 	        } 
 	        if (response.length() < 1) {
 	        	System.out.println("No response");
-	        } else System.out.println("Response ("+response.length()+"):");
-	        System.out.println(response.toString());
-	          
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
 	        
+	        dataOut.writeBytes("unzip -o "+archive+"\r\n");
+	        // print the response   
+	        dataOut.flush();
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        response= new StringBuilder();
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
+	        
+	        dataOut.writeBytes("cd "+noExtension(archive)+"\r\n");
+	        // print the response   	
+	        dataOut.flush();
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        response= new StringBuilder();
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
+	        
+	        dataOut.writeBytes("make\r\n");
+	        // print the response   
+	        dataOut.flush();
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        response= new StringBuilder();
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
+	        
+	        dataOut.writeBytes("ls -la\r\n");  
+	     // print the response   
+	        dataOut.flush();
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        response= new StringBuilder();
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
+	        
+	        dataOut.close();
+	  
 	        dataIn.close();
 	        channel.disconnect();  
 	        session.disconnect();
@@ -230,7 +279,7 @@ public class SSHclient {
     	 * @param str Input string to be corrected
     	 * @return corrected string
     	 */
-    	private String correct_symbols(String str) {
+    	private String correctSymbols(String str) {
     		if (str == null) return null;
     		String[][] correct_pairs = {{"[34;42m","/"},{"[01;34m",""},{"[0m",""},{"[01;32m","*"},{"[01;31m",""}};
     		for (int i = 0; i < correct_pairs.length; i++) {
