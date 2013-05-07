@@ -147,35 +147,34 @@ public class SSHclient {
 	        DataOutputStream dataOut = new DataOutputStream(channel.getOutputStream());  
 	        
 	        // send ls command to the server  
-	        dataOut.writeBytes("cd "+remote_path+"\r\n"); 
-	        dataOut.flush();  
-	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
-	        // print the response   
-	        StringBuilder response= new StringBuilder();
-	        while(dataIn.ready()) {
-	        	char c = (char)dataIn.read();
-	        	response.append(c);       
-	        } 
-	        if (response.length() < 1) {
-	        	System.out.println("No response");
-	        } 
-	        System.out.println(correctSymbols(response.toString()));
+	        execRemoteCommand("cd "+remote_path, dataIn, dataOut); 
 	        
-	        dataOut.writeBytes("unzip -o "+archive+"\r\n");
-	        // print the response   
-	        dataOut.flush();
-	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
-	        response= new StringBuilder();
-	        while(dataIn.ready()) {
-	        	char c = (char)dataIn.read();
-	        	response.append(c);       
-	        } 
-	        if (response.length() < 1) {
-	        	System.out.println("No response");
-	        } 
-	        System.out.println(correctSymbols(response.toString()));
+	        execRemoteCommand("unzip -o "+archive, dataIn, dataOut);
 	        
-	        dataOut.writeBytes("cd "+noExtension(archive)+"\r\n");
+	        execRemoteCommand("cd "+noExtension(archive), dataIn, dataOut);
+	        
+	        execRemoteCommand("make", dataIn, dataOut);
+	        
+	        execRemoteCommand("ls -la", dataIn, dataOut);
+	    	        
+	        dataOut.close();
+	  
+	        dataIn.close();
+	        channel.disconnect();  
+	        session.disconnect();
+	        System.exit(0);
+	    }
+
+		/**
+		 * Execute a remote command, waits 1 sec and prints output to dataIn stream
+		 * @param command to execute
+		 * @param dataIn	output of the command (stream towards local machine)
+		 * @param dataOut	command stream (stream outwards local machine) 
+		 * @throws IOException
+		 */
+		private void execRemoteCommand(String command, BufferedReader dataIn, DataOutputStream dataOut) throws IOException {
+			StringBuilder response;
+			dataOut.writeBytes(command+"\r\n");
 	        // print the response   	
 	        dataOut.flush();
 	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
@@ -188,42 +187,7 @@ public class SSHclient {
 	        	System.out.println("No response");
 	        } 
 	        System.out.println(correctSymbols(response.toString()));
-	        
-	        dataOut.writeBytes("make\r\n");
-	        // print the response   
-	        dataOut.flush();
-	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
-	        response= new StringBuilder();
-	        while(dataIn.ready()) {
-	        	char c = (char)dataIn.read();
-	        	response.append(c);       
-	        } 
-	        if (response.length() < 1) {
-	        	System.out.println("No response");
-	        } 
-	        System.out.println(correctSymbols(response.toString()));
-	        
-	        dataOut.writeBytes("ls -la\r\n");  
-	     // print the response   
-	        dataOut.flush();
-	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
-	        response= new StringBuilder();
-	        while(dataIn.ready()) {
-	        	char c = (char)dataIn.read();
-	        	response.append(c);       
-	        } 
-	        if (response.length() < 1) {
-	        	System.out.println("No response");
-	        } 
-	        System.out.println(correctSymbols(response.toString()));
-	        
-	        dataOut.close();
-	  
-	        dataIn.close();
-	        channel.disconnect();  
-	        session.disconnect();
-	        System.exit(0);
-	    }  
+		}  
     	
     	/**
     	 * Return only file name given full path to a file
