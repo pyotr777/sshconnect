@@ -110,7 +110,7 @@ public class SSHclient {
 	        
 	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_path+").");
 	        
-	        SftpProgressMonitor monitor=new MyProgressMonitor();
+	        SftpProgressMonitor monitor = new MyProgressMonitor();
 		    int mode=ChannelSftp.OVERWRITE;
 		    sftp_channel.cd(remote_path);
 		    System.out.println("Remote directory: " + sftp_channel.pwd());
@@ -121,11 +121,10 @@ public class SSHclient {
 		    
 		    sftp_channel.lcd(local_path);
 		    System.out.println("Local directory: " + sftp_channel.lpwd());
-		    
+	    
 		    
 		    // Create ZIP archive
 		    AppZip appZip = new AppZip(local_path);
-		    //appZip.setSource(local_path);
 	    	String archive_path = archiveName(local_path);
 	    	appZip.zipIt(archive_path);
 	    	File file = new File(archive_path);
