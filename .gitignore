@@ -6,3 +6,6 @@
 Icon?
 ehthumbs.db
 Thumbs.db
+*.class
+bin/ssh/connect/SSHclient$SSHbasic.class
+bin/ssh/connect/SSHclient$SSHUserInfo.class

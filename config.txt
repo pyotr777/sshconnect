@@ -1,0 +1,13 @@
+# Configuration file for SSHconnect
+# host IP address and port
+host = 192.168.56.101
+# SSH username and password 
+user = peter  
+password = simsim
+port = 22
+
+# Location of source files
+local_path = /Users/peterbryzgalov/work/HimenoBMT_Dprof
+
+# Remote F_Front location 
+remote_path = /home/peter/kscope/

@@ -62,8 +62,6 @@ public class AppZip
 			zos.closeEntry();
 			//remember close it
 			zos.close();
-
-			System.out.println("Done");
 		} catch(IOException ex) {
 			ex.printStackTrace();   
 		}
