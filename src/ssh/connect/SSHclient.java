@@ -12,6 +12,9 @@ import java.util.ArrayList;
 import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
+// Ver.0.11 
+// Channel EXEC
+
 public class SSHclient {
 
 	/**
