@@ -11,3 +11,6 @@ local_path = /Users/peterbryzgalov/work/HimenoBMT_Dprof
 
 # Remote F_Front location 
 remote_path = /home/peter/kscope/
+
+# Exclude file filter 
+file_filter = .*,*.tar,*.html,*.zip,*.o,*.xml,*.xmod

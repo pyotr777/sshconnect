@@ -31,11 +31,18 @@ public class SSHclient {
 	    // default name for archive file
 		private String default_archive_filename = "archive.zip"; 
 	    
-	    String local_path = "/Users/peterbryzgalov/work/HimenoBMT_Dprof"; // local project folder. Must contain Makefile and all file necessary for building.  
+		// local project folder. Must contain Makefile and all files necessary for building.  
+	    String local_path = "/Users/peterbryzgalov/work/HimenoBMT_Dprof"; 
 	    String remote_path = "/home/peter/kscope/"; 
-	    String tmp_dir = "tmp";
 	    
+	    // Remote temporary folder name
+	    java.util.Random rndm = new java.util.Random();
+	    String tmp_dir = "tmp" + rndm.nextInt();
 	    
+	    // Source file filter.
+	    // Exclude selected file types.
+	    String file_filter = ".*,*.tar,*.html,*.zip,*.jpg";
+	    	    
 	    int group_id = 1002; // kscope group ID	   
 	    int port = 22; // default SSH port  
 	    
@@ -97,7 +104,8 @@ public class SSHclient {
         		host = prop.getProperty("host").replaceAll("\\s","");
         		port = Integer.parseInt(prop.getProperty("port").replaceAll("\\s",""));
         		local_path = prop.getProperty("local_path").replaceAll("\\s","");
-        		remote_path = prop.getProperty("remote_path").replaceAll("\\s","");       		
+        		remote_path = prop.getProperty("remote_path").replaceAll("\\s","");     
+        		file_filter = prop.getProperty("file_filter").replaceAll("\\s","");
         	} catch (IOException e) {
         		e.printStackTrace();
         		System.out.println("Default parameters used.");
@@ -145,7 +153,7 @@ public class SSHclient {
 	    
 		    
 		    // Create ZIP archive
-		    AppZip appZip = new AppZip(local_path);
+		    AppZip appZip = new AppZip(local_path, file_filter);
 	    	String archive_path = archiveName(local_path);
 	    	appZip.zipIt(archive_path);
 	    	File file = new File(archive_path);

@@ -6,18 +6,24 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
  
 public class AppZip
 {
 	List<String> fileList;
+	
+	
 	private String SOURCE_FOLDER = null;
 	
 	// Length of the source path of the files to be archived, that should be skipped.
 	// Need to store files with short paths relative to the topmost folder in archive.
 	// Set inside setSource method.
 	private int SOURCE_PATH_SKIP_LENGTH = 0;
+	
+	Pattern filter_pattern = null;
 
 	AppZip(String source)  throws IOException {
 		fileList = new ArrayList<String>();
@@ -26,6 +32,30 @@ public class AppZip
 		// Check if source path is valid
 	    File local = new File(source);
 	    if (!local.exists()) throw new IOException("Source path is not valid (not exists): "+source);
+	 }
+	
+	AppZip(String source, String filter)  throws IOException {
+		fileList = new ArrayList<String>();
+		// filter for unneeded files
+		filter_pattern =  Pattern.compile(convertFilterPattern(filter));
+	    
+		if (source.length() > 0) setSource(source);
+		else throw new IOException("Source path for creating archive is empty.");
+		// Check if source path is valid
+	    File local = new File(source);
+	    if (!local.exists()) throw new IOException("Source path is not valid (not exists): "+source);    
+	}
+
+	/**
+	 * Transform common file patterns like "*.html,.*.*" into regular expression: "(.*\\.html)|(\\..*\\..*)".
+	 * @param filter String containing comma-separated common patterns
+	 * @return String, containing regular expression for matching such files.
+	 */
+	private String convertFilterPattern(String filter) {
+		String regexp = "(" +filter.replaceAll(",",")|(") + ")";
+		regexp = regexp.replaceAll("\\.", "\\\\.");
+		regexp = regexp.replaceAll("\\*", ".*");
+		return regexp;
 	}
 
 	/**
@@ -87,7 +117,9 @@ public class AppZip
 	 * @param node file or directory
 	 */
 	private void generateFileList(File node){
-
+		
+		if (filterThisFile(node)) return;
+			
 		//add file only
 		if (node.isFile()){
 			File file = node.getAbsoluteFile();
@@ -102,7 +134,25 @@ public class AppZip
 				generateFileList(new File(node, filename));
 			}
 		}
-
+	}
+		
+	/**
+	 * Check if this file should be filtered out or oncluded into archive
+	 * @param node	File to be checked
+	 * @return true if file should be filtered out
+	 */
+	private boolean filterThisFile(File node) {
+		String filename = node.getName();
+		Matcher m = filter_pattern.matcher(filename);
+		if (m.matches()) {
+			try {
+				System.out.println("Filtered "+node.getCanonicalPath());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return true;
+		}
+		return false;
 	}
 
 	/**

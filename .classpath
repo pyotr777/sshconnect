@@ -3,6 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="lib"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry kind="lib" path="lib/jsch-0.1.49.jar" sourcepath="lib/jsch-0.1.49.jar"/>
+	<classpathentry kind="lib" path="/Users/peterbryzgalov/Documents/workspaceJava/SSHconnect/lib/jsch-0.1.50.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
