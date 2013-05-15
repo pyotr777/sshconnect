@@ -1,9 +1,8 @@
 /**
- *  Channel EXEC
- *  v.0.12
+ *  Branch orionSSH 
+ *  v.0.11
  *  
- *  Success on Himeno project
- *  from Eclipse and exportiong and running jar.
+ *  Success on making NICAM project in a predefined remote location, and downloading XML files.
  */
 /**
  * @author peterbryzgalov
