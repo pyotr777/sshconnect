@@ -2,17 +2,20 @@ package ssh.connect;
 
 import com.jcraft.jsch.*;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;  
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
 
 /**
- * Ver.0.12 
+ * Ver.0.13 
  * Channel EXEC
  * 
  * Successfully tested on Himeno project. 15.05.2013 10:45
@@ -131,11 +134,13 @@ public class SSHclient {
 	        ChannelSftp sftp_channel=(ChannelSftp)channel;
 	        
 	        // Temporary directory: remote_tmp
-	        String remote_tmp = remote_path + "/" + tmp_dir;
+	        //String remote_tmp = remote_path + "/" + tmp_dir;
+	        String remote_tmp = "/home/peter/kscope";
 	        remote_tmp = remote_tmp.replaceAll("//", "/");
 	        
 	        // Check if remote directory exists
 	        // Method lstat throws SftpException if path does not exist
+	       /*
 	        SftpATTRS attrs = null;
 	        try {
 	        	attrs = sftp_channel.lstat(remote_tmp);
@@ -147,7 +152,7 @@ public class SSHclient {
 	        }
 	        
 	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_tmp+").");
-	        
+	        */
 	        SftpProgressMonitor monitor = new MyProgressMonitor();
 		    int mode=ChannelSftp.OVERWRITE;
 		    sftp_channel.cd(remote_tmp);
@@ -160,6 +165,7 @@ public class SSHclient {
 		    sftp_channel.lcd(local_path);
 		    System.out.println("Local directory: " + sftp_channel.lpwd());
 	    
+		    /*
 		    
 		    // Create ZIP archive
 		    AppZip appZip = new AppZip(local_path, file_filter);
@@ -178,19 +184,32 @@ public class SSHclient {
 		    // Delete local archive file
 		    file.delete();
 		    	        
+		    	        */
+		    /* SHELL CHANNEL
+		    channel = session.openChannel("shell"); 
+	        channel.connect();  
+	        InputStreamReader isr = new InputStreamReader(channel.getInputStream());
+	        BufferedReader dataIn = new BufferedReader(isr);  
+	        DataOutputStream dataOut = new DataOutputStream(channel.getOutputStream());  
+	        
+	        // send ls command to the server  
+	        execRemoteCommand("echo $PATH", dataIn, dataOut); 
+ */
+		    
+		    
 		    // Execute make
-		    execRemoteCommands(session,"cd "+remote_tmp+"\nunzip -o "+archive+"\ncd "+noExtension(archive)+"\nmake\n");
-		    String filelist = execRemoteCommands(session,"cd "+remote_tmp+"/"+noExtension(archive)+"\nls\n");
+		    execRemoteCommands(session,"cd "+remote_tmp+"/NICAM-K\nmake\n");
+		    String filelist = execRemoteCommands(session,"cd "+remote_tmp+"/NICAM-K\nls\n");
 		    String[] filenames = findXMLfilenameFromList(filelist);
 		    // Download XML
 	        for (String filename:filenames) {
-	        	String remote_filename = sftp_channel.pwd()+"/"+ noExtension(archive)+"/"+filename;
+	        	String remote_filename = sftp_channel.pwd()+"/NICAM-K/"+filename;
 	        	System.out.println("Downloading "+remote_filename+" to " + sftp_channel.lpwd());
 	        	sftp_channel.get(remote_filename, ".", monitor, mode);
 	        }
 	        
 	        // Clean remote tmp files
-	        execRemoteCommands(session,"cd "+remote_path+"\nrm -r " + tmp_dir);
+	        //execRemoteCommands(session,"cd "+remote_path+"\nrm -r " + tmp_dir);
 		    
 		    /*
 	        channel = session.openChannel("shell"); 
@@ -216,10 +235,12 @@ public class SSHclient {
 	        // Clean remote tmp files
 	        execRemoteCommand("cd "+remote_path, dataIn, dataOut);
 	        execRemoteCommand("rm -r " + tmp_dir, dataIn, dataOut);
-	        dataOut.close();
+	         dataOut.close();
 	        dataIn.close();
-	       */ 
-	    
+	       */
+	        
+	        
+	       
 	        sftp_channel.exit();		    
 	        channel.disconnect();  
 	        session.disconnect();
@@ -236,30 +257,61 @@ public class SSHclient {
     	 * @throws IOException 
     	 */
     	private String execRemoteCommands(Session session, String commands) throws JSchException, IOException {
+    		System.out.print("Exec "+ commands + "\n");
     		StringBuilder response = new StringBuilder();
     		Channel ch = session.openChannel("exec");
-    		((ChannelExec)ch).setCommand(commands);
+    		//((ChannelExec)ch).setEnv("PATH", ".:/bin:/usr/bin:/home/peter/kscope:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+    		((ChannelExec)ch).setCommand("sh /bin/path.sh\n"+commands);
     		ch.setInputStream(null);
+    		((ChannelExec)ch).setErrStream(System.err);
     		InputStream in=ch.getInputStream();
     		ch.connect();
     		byte[] tmp=new byte[1024];
     		while(true){
-    			while(in.available()>0){
+    			System.out.print("Available " + in.available() + ". Closed " + ch.isClosed()+ "\n");
+    			while(in.available() > 0){
     				int i=in.read(tmp, 0, 1024);
     				if(i < 0) break;
     				String s = new String(tmp, 0, i);
     				System.out.print(s);
     				response.append(s);
+    				System.out.print("\n-- Available " + in.available() + ". Closed " + ch.isClosed()+ "\n");
+    				try{Thread.sleep(1000);}catch(Exception ee){ ee.printStackTrace(); }    				
     			}
     			if(ch.isClosed()){
     				System.out.println("exit-status: "+ch.getExitStatus());
     				break;
     			}
-    			try{Thread.sleep(1000);}catch(Exception ee){}
+    			try{Thread.sleep(1000);}catch(Exception ee){ ee.printStackTrace(); }
     		}
     		ch.disconnect();	
     		return response.toString();
 		}
+    	
+    	/**
+		 * Execute a remote command, waits 1 sec and prints output to dataIn stream
+		 * @param command to execute
+		 * @param dataIn	output of the command (stream towards local machine)
+		 * @param dataOut	command stream (stream outwards local machine) 
+		 * @throws IOException
+		 */
+		private String execRemoteCommand(String command, BufferedReader dataIn, DataOutputStream dataOut) throws IOException {
+			StringBuilder response;
+			dataOut.writeBytes(command+"\r\n");
+	        // print the response   	
+	        dataOut.flush();
+	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
+	        response= new StringBuilder();
+	        while(dataIn.ready()) {
+	        	char c = (char)dataIn.read();
+	        	response.append(c);       
+	        } 
+	        if (response.length() < 1) {
+	        	System.out.println("No response");
+	        } 
+	        System.out.println(correctSymbols(response.toString()));
+	        return response.toString();
+		}  
 
 		/**
     	 * Find generated XML file with intermediate code from file list.
@@ -343,7 +395,21 @@ public class SSHclient {
 	        session.setUserInfo(new SSHUserInfo(password));  
 	        session.connect();  
 	        return session;
-    	}    	
+    	}  
+		
+		/**
+    	 * Correct distorted symbols
+    	 * @param str Input string to be corrected
+    	 * @return corrected string
+    	 */
+    	private String correctSymbols(String str) {
+    		if (str == null) return null;
+    		String[][] correct_pairs = {{"[34;42m","/"},{"[01;34m",""},{"[0m",""},{"[01;32m","*"},{"[01;31m",""}};
+    		for (int i = 0; i < correct_pairs.length; i++) {
+    			str = str.replace(correct_pairs[i][0], correct_pairs[i][1]);
+    		}
+    		return str;
+    	}
 	}
   
     // this class implements jsch UserInfo interface for passing password to the session  

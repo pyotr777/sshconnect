@@ -7,7 +7,7 @@ password = simsim
 port = 22
 
 # Location of source files
-local_path = /Users/peterbryzgalov/work/HimenoBMT_Dprof
+local_path = /Users/peterbryzgalov/work/NICAM-K
 
 # Remote F_Front location 
 remote_path = /home/peter/kscope/
