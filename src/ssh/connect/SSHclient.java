@@ -2,18 +2,24 @@ package ssh.connect;
 
 import com.jcraft.jsch.*;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;  
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;  
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
-// Ver.0.11 
-// Channel EXEC
+
+/**
+ * Ver.0.12 
+ * Channel EXEC
+ * 
+ * Successfully tested on Himeno project. 15.05.2013 10:45
+ * 
+ * @author peterbryzgalov
+ *
+ */
 
 public class SSHclient {
 
@@ -173,6 +179,20 @@ public class SSHclient {
 		    file.delete();
 		    	        
 		    // Execute make
+		    execRemoteCommands(session,"cd "+remote_tmp+"\nunzip -o "+archive+"\ncd "+noExtension(archive)+"\nmake\n");
+		    String filelist = execRemoteCommands(session,"cd "+remote_tmp+"/"+noExtension(archive)+"\nls\n");
+		    String[] filenames = findXMLfilenameFromList(filelist);
+		    // Download XML
+	        for (String filename:filenames) {
+	        	String remote_filename = sftp_channel.pwd()+"/"+ noExtension(archive)+"/"+filename;
+	        	System.out.println("Downloading "+remote_filename+" to " + sftp_channel.lpwd());
+	        	sftp_channel.get(remote_filename, ".", monitor, mode);
+	        }
+	        
+	        // Clean remote tmp files
+	        execRemoteCommands(session,"cd "+remote_path+"\nrm -r " + tmp_dir);
+		    
+		    /*
 	        channel = session.openChannel("shell"); 
 	        channel.connect();  
 	        InputStreamReader isr = new InputStreamReader(channel.getInputStream());
@@ -196,16 +216,52 @@ public class SSHclient {
 	        // Clean remote tmp files
 	        execRemoteCommand("cd "+remote_path, dataIn, dataOut);
 	        execRemoteCommand("rm -r " + tmp_dir, dataIn, dataOut);
-	    
-	        sftp_channel.exit();
-		    dataOut.close();
+	        dataOut.close();
 	        dataIn.close();
+	       */ 
+	    
+	        sftp_channel.exit();		    
 	        channel.disconnect();  
 	        session.disconnect();
 	        System.exit(0);
 	    }
 
     	/**
+    	 * Execute number of command on remote machine 
+    	 * using channel Exec.
+    	 * 
+    	 * @param session	connection session,
+    	 * @param commands	commands to be executed.
+    	 * @throws JSchException 
+    	 * @throws IOException 
+    	 */
+    	private String execRemoteCommands(Session session, String commands) throws JSchException, IOException {
+    		StringBuilder response = new StringBuilder();
+    		Channel ch = session.openChannel("exec");
+    		((ChannelExec)ch).setCommand(commands);
+    		ch.setInputStream(null);
+    		InputStream in=ch.getInputStream();
+    		ch.connect();
+    		byte[] tmp=new byte[1024];
+    		while(true){
+    			while(in.available()>0){
+    				int i=in.read(tmp, 0, 1024);
+    				if(i < 0) break;
+    				String s = new String(tmp, 0, i);
+    				System.out.print(s);
+    				response.append(s);
+    			}
+    			if(ch.isClosed()){
+    				System.out.println("exit-status: "+ch.getExitStatus());
+    				break;
+    			}
+    			try{Thread.sleep(1000);}catch(Exception ee){}
+    		}
+    		ch.disconnect();	
+    		return response.toString();
+		}
+
+		/**
     	 * Find generated XML file with intermediate code from file list.
     	 * The file has following characteristics:
     	 *  - created after other files in the same folder,
@@ -215,7 +271,7 @@ public class SSHclient {
     	 */
 		private String[] findXMLfilenameFromList(String filelist) {
 			ArrayList<String> xml_filename_list = new ArrayList<String>();
-			String[] filenames = filelist.split(" "); 
+			String[] filenames = filelist.split("\n"); 
 			for (String filename : filenames) {
 				if (filename.length() > 1) {
 					if (checkName(filename)) xml_filename_list.add(filename);
@@ -241,31 +297,7 @@ public class SSHclient {
 			return false;
 		}
 
-		/**
-		 * Execute a remote command, waits 1 sec and prints output to dataIn stream
-		 * @param command to execute
-		 * @param dataIn	output of the command (stream towards local machine)
-		 * @param dataOut	command stream (stream outwards local machine) 
-		 * @throws IOException
-		 */
-		private String execRemoteCommand(String command, BufferedReader dataIn, DataOutputStream dataOut) throws IOException {
-			StringBuilder response;
-			dataOut.writeBytes(command+"\r\n");
-	        // print the response   	
-	        dataOut.flush();
-	        try {Thread.sleep(1000); } catch (Exception ee) {ee.printStackTrace();}
-	        response= new StringBuilder();
-	        while(dataIn.ready()) {
-	        	char c = (char)dataIn.read();
-	        	response.append(c);       
-	        } 
-	        if (response.length() < 1) {
-	        	System.out.println("No response");
-	        } 
-	        System.out.println(correctSymbols(response.toString()));
-	        return response.toString();
-		}  
-    	
+		    	
     	/**
     	 * Return only file name given full path to a file
     	 * @param full_path	Full path with filename
@@ -311,23 +343,7 @@ public class SSHclient {
 	        session.setUserInfo(new SSHUserInfo(password));  
 	        session.connect();  
 	        return session;
-    	}
-    	
-    	
-    	  	
-    	/**
-    	 * Correct distorted symbols
-    	 * @param str Input string to be corrected
-    	 * @return corrected string
-    	 */
-    	private String correctSymbols(String str) {
-    		if (str == null) return null;
-    		String[][] correct_pairs = {{"[34;42m","/"},{"[01;34m",""},{"[0m",""},{"[01;32m","*"},{"[01;31m",""}};
-    		for (int i = 0; i < correct_pairs.length; i++) {
-    			str = str.replace(correct_pairs[i][0], correct_pairs[i][1]);
-    		}
-    		return str;
-    	}
+    	}    	
 	}
   
     // this class implements jsch UserInfo interface for passing password to the session  
