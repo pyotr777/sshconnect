@@ -14,3 +14,6 @@ remote_path = /home/peter/kscope/
 
 # Exclude file filter 
 file_filter = .*,*.tar,*.html,*.zip,*.o,*.xml,*.xmod
+
+# Make files need parsing. Separate with commas.
+makefiles = Mkinclude

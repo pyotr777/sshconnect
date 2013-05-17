@@ -1,8 +1,8 @@
 /**
  *  Branch orionSSH 
- *  v.0.11
+ *  v.0.12
  *  
- *  Success on making NICAM project in a predefined remote location, and downloading XML files.
+ *  Parsing makefiles for replacment patterns.
  */
 /**
  * @author peterbryzgalov

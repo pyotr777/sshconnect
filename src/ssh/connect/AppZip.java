@@ -118,10 +118,9 @@ public class AppZip
 	 */
 	private void generateFileList(File node){
 		
-		if (filterThisFile(node)) return;
-			
 		//add file only
 		if (node.isFile()){
+			if (filterThisFile(node)) return;
 			File file = node.getAbsoluteFile();
 			String path = file.toString();
 			String entry = generateZipEntry(path);
