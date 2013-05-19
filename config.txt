@@ -1,13 +1,13 @@
 # Configuration file for SSHconnect
 # host IP address and port
-host = 192.168.56.101
+host = 127.0.0.1
 # SSH username and password 
 user = peter  
 password = simsim
-port = 22
+port = 3022
 
 # Location of source files
-local_path = /Users/peterbryzgalov/work/NICAM-K
+local_path = /Users/peterbryzgalov/work/NICAM-K.xml
 
 # Remote F_Front location 
 remote_path = /home/peter/kscope/

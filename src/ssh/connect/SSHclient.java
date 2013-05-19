@@ -7,6 +7,8 @@ import java.io.FileInputStream;
 import java.io.IOException;  
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,9 +30,10 @@ import com.trilead.ssh2.StreamGobbler;
 
 
 /**
- * Ver.0.12 
+ * Ver.0.13 
  * Orion SSH + JSch
  * Parsing Makefiles for replacement patterns
+ * Unique temporary directory names
  * 
  * @author Peter Bryzgalov
  *
@@ -109,18 +112,46 @@ public class SSHclient {
         		e.printStackTrace();
         		System.out.println("Default parameters used.");
         	}
-        	
-        	// Remote tmp directory name generation
-	    	java.util.Random rndm = new java.util.Random();
-	    	
-	    	// TODO append user name (make paths unique for different users)
-	    	tmp_dir = "tmp" + rndm.nextInt();
 
-	    	remote_tmp = remote_path + "/" + tmp_dir;
-		    remote_tmp = remote_tmp.replaceAll("//", "/");		  
+        	// Remote tmp directory name generation
+        	String mac = getMacAddress();
+        	tmp_dir = String.format("tmp-%s-%d-%s", System.getProperty("user.name"),System.currentTimeMillis()/1000,mac);
+
+        	remote_tmp = remote_path + "/" + tmp_dir;
+        	remote_tmp = remote_tmp.replaceAll("//", "/");	
+        	//System.out.println(remote_tmp);
     	}
     	
-	    public void makeConnect()  throws IOException, JSchException, SftpException {
+	    private String getMacAddress() {
+	    	InetAddress ip;
+	    	StringBuilder sb = null;
+	    	try {
+	     
+	    		ip = InetAddress.getLocalHost();
+	    		//System.out.println("Current IP address : " + ip.getHostAddress());
+	     
+	    		NetworkInterface network = NetworkInterface.getByInetAddress(ip);
+	     
+	    		byte[] mac = network.getHardwareAddress();
+	     
+	    		//System.out.print("Current MAC address : ");
+	     
+	    		sb = new StringBuilder();
+	    		for (int i = 0; i < mac.length; i++) {
+	    			sb.append(String.format("%02X", mac[i]));		
+	    		}
+
+	    	} catch (Exception e){
+
+	    		e.printStackTrace();
+
+	    	}
+	    	String macS = sb.toString();
+	    	//macS = macS.replaceAll("-", "").replaceAll("00","");
+	    	return macS;
+		}
+
+		public void makeConnect()  throws IOException, JSchException, SftpException {
 	    	// JSch connect and upload
 	    	
 	    	// get a new session    
@@ -132,7 +163,7 @@ public class SSHclient {
 	    	createArchiveAndUpload();
 	    	
 	    	// Execute remote commands
-	    	Connection conn = new Connection(host);
+	    	Connection conn = new Connection(host,port);
 	    	conn.connect();
 
 	    	boolean isAuthenticated = conn.authenticateWithPassword(user, password);

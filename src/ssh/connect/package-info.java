@@ -1,8 +1,7 @@
 /**
  *  Branch orionSSH 
- *  v.0.12
- *  
- *  Parsing makefiles for replacment patterns.
+ *  v.0.13
+ *  2013.05.19
  */
 /**
  * @author peterbryzgalov
