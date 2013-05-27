@@ -11,6 +11,15 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
  
+
+/**
+ * Ver.0.14
+ * 
+ * Add files to zip archive
+ *  * 
+ * @author peterbryzgalov
+ *
+ */
 public class AppZip
 {
 	List<String> fileList;
@@ -75,7 +84,7 @@ public class AppZip
 
 			for(String file : this.fileList){
 
-				System.out.println("File Added : " + file);
+				System.out.println(" file added : " + file);
 				ZipEntry ze= new ZipEntry(file);
 				zos.putNextEntry(ze);
 				String filename = SOURCE_FOLDER.substring(0,SOURCE_PATH_SKIP_LENGTH) + file;
@@ -136,7 +145,7 @@ public class AppZip
 	}
 		
 	/**
-	 * Check if this file should be filtered out or oncluded into archive
+	 * Check if this file should be filtered out or included into archive
 	 * @param node	File to be checked
 	 * @return true if file should be filtered out
 	 */
