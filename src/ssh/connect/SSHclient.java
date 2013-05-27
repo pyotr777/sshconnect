@@ -56,12 +56,13 @@ public class SSHclient {
 	 */
 	public static void main(String[] args) throws IOException, JSchException, SftpException, NoSuchAlgorithmException {
 		SSHbasic basic_connection = new SSHbasic();
-		basic_connection.local_path = args[args.length-1];
+		if (args.length > 0) basic_connection.local_path = args[args.length-1]; // last parameter - local path
+		
 		for (String arg: args) {
 			System.out.println(arg);
 		}
-		detectPaths(basic_connection.local_path);
-		//basic_connection.makeConnect();
+		//detectPaths(basic_connection.local_path);
+		basic_connection.makeConnect();
 	}
 	
 	/**
@@ -107,7 +108,7 @@ public class SSHclient {
 	    int port; // default SSH port  
 	    
 		// local project folder. Must contain Makefile and all files necessary for building.  
-	    String local_path = ""; 
+	    String local_path = "/Users/peterbryzgalov/work/NICAM-K.xml"; 
 	    String remote_path = ""; 
 	    String remote_full_path = ""; // path including temporary directory and archive name without extension
 	    String archive = "";
@@ -144,8 +145,7 @@ public class SSHclient {
 	    	// Read parameters from configuration file
     		Properties prop = new Properties();
         	try {
-                //load properties from config file
-        		prop.load(new FileInputStream("config.txt"));
+                prop.load(new FileInputStream("config.txt"));
         		user = updateProperty(prop, "user");
         		password = updateProperty(prop, "password");
         		try {
@@ -161,7 +161,15 @@ public class SSHclient {
         			port = 22;
         			System.out.println("Default port 22 used.");
         		}
-        		// local_path = updateProperty(prop, "local_path");
+        		try {
+        			// Local path is optional parameter 
+        			String lp = updateProperty(prop, "local_path");
+        			if (lp != null && lp.length() > 1) {
+        				local_path = lp;
+        			}
+        		} catch (Exception e) {
+        		}
+        			
         		remote_path = updateProperty(prop, "remote_path");     
         		
         		// *.origin - reserved for original copies of edited make files.
@@ -405,18 +413,19 @@ public class SSHclient {
 		    
 		    // Create ZIP archive
 		    AppZip appZip = new AppZip(local_path, file_filter);
-	    	appZip.zipIt(archive_path);
-	    	File file = new File(archive_path);
+	    	//appZip.zipIt(archive_path);
+	    	File zip_file = new File(archive_path);
+	    	appZip.zipIt(zip_file);
 		    System.out.println("Created zip: " + archive_path);		    
-		    if (file.exists()) {
-			    FileInputStream file_stream = new FileInputStream(file);
+		    if (zip_file.exists()) {
+			    FileInputStream file_stream = new FileInputStream(zip_file);
 			    sftp_channel.put(file_stream, archive, monitor, mode); 
 			    sftp_channel.chgrp(group_id, archive); 
 		    }
 		    System.out.println("Archive uploaded.");
 		    
 		    // Delete local archive file
-		    file.delete();
+		    zip_file.delete();
 		    
 		    // Restore original makefiles
 		    if (makefiles.length() > 0) {
