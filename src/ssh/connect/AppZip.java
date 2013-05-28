@@ -80,10 +80,9 @@ public class AppZip
 			System.out.println("Output to Zip : " + zip_file.getCanonicalPath());
 			for(File file : this.file_list) {
 				System.out.println(" file added : " + file);
-				ZipEntry ze= new ZipEntry(file);
+				ZipEntry ze= new ZipEntry(generateZipEntry(file.getAbsolutePath()));
 				zos.putNextEntry(ze);
-				String filename = SOURCE_FOLDER.substring(0,SOURCE_PATH_SKIP_LENGTH) + file;
-				FileInputStream in =  new FileInputStream(filename);
+				FileInputStream in =  new FileInputStream(file);
 				int len;
 				while ((len = in.read(buffer)) > 0) {
 					zos.write(buffer, 0, len);
