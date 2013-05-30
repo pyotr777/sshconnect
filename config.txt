@@ -13,9 +13,6 @@ make = make
 # Make command options
 #make_options = -a -b -c
 
-# F_Front and atool path on remote machine
-Ffront_path = /home/sshuser/kscope
-
 # Location of source files
 local_path = /Users/peterbryzgalov/work/NICAM-K.xml
 

@@ -7,9 +7,11 @@ import java.util.ArrayList;
 public class FileListGenerator {
 	
 	private ArrayList<File> file_list;
+	FileFilter f_filter;
 	
 	public FileListGenerator(String start_path, FileFilter f_filter) throws FileNotFoundException, NullPointerException {
 		file_list = new ArrayList<File>();
+		this.f_filter = f_filter;
 		if (start_path == null || start_path.length() < 1) throw new NullPointerException ("start_path is null or empty."); 
 		File start = new File(start_path);
 		if (start==null || !start.isDirectory()) {
@@ -32,7 +34,6 @@ public class FileListGenerator {
 	 * @param node file or directory
 	 */
 	private void generateFileList(File node, FileFilter f_filter) {
-		
 		//add file only
 		if (node.isFile()){
 			if (f_filter.filter(node)) return;
