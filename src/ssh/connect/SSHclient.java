@@ -32,9 +32,10 @@ import com.trilead.ssh2.StreamGobbler;
 
 
 /**
- * Ver.0.20
+ * Ver.0.21
  * Main function is here.
  * 
+ * Placeholders replacement changed. Now syntax is #[placeholder_name] 
  * Simultaneous stdout and stderr output. 
  * Error handling.
  * Works with K-scope.
@@ -110,6 +111,7 @@ public class SSHclient {
 		if (args.length > 0) {
 			ssh_connection.make = args[0];
 		}
+		System.out.println(" finished.");
 		
 		//detectPaths(basic_connection.local_path); //  on hold.
 		
@@ -172,7 +174,7 @@ public class SSHclient {
 	    
 	    String make = "";
 	    String make_options = "";
-	    static private final Pattern placeholder_pattern = Pattern.compile("<([\\w\\d\\-_]*)>");
+	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
 	    private String default_archive_filename = "archive.zip"; 
 	    
 	    // Remote temporary folder name
@@ -199,7 +201,7 @@ public class SSHclient {
 	    	
 	    	// Read parameters from configuration file
     		Properties prop = new Properties();
-
+    		System.out.print("Initialization start...");
     		prop.load(new FileInputStream("config.txt"));
     		
     		make = updateProperty(prop,"make");
@@ -242,8 +244,7 @@ public class SSHclient {
     		// Remote tmp directory name generation
     		tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, getTmpDirName(System.getProperty("user.name")));
     		remote_tmp = remote_path + "/" + tmp_dir;
-    		remote_tmp = remote_tmp.replaceAll("//", "/");	
-        	//System.out.println(remote_tmp);
+    		remote_tmp = remote_tmp.replaceAll("//", "/");	    		
     	}
     	
 	    /**
@@ -296,6 +297,8 @@ public class SSHclient {
 		 */
 		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException {
 			
+			System.out.print("Creating connection to "+host+":"+port+"...");
+			
 			// Orion SSH
 			Connection orion_conn = new Connection(host,port);
 			orion_conn.connect();
@@ -305,16 +308,19 @@ public class SSHclient {
 			if (isAuthenticated == false)
 				throw new IOException("Authentication on server "+host+":" +port+" with "+ user+":" + password+ " failed.");
 			
+			System.out.println(" authenticated.");
 			// 1.
 			// JSch connect and upload
 			// get a new session    
+			System.out.print("Opening SFTP channel...");
 			session = new_session();  
 			try {
-				System.out.println("Opening SFTP channel to "+host+":"+port+".");
 				channel=session.openChannel("sftp");
 				channel.connect();
 				sftp_channel=(ChannelSftp)channel;
-
+				System.out.println(" success.");
+				try { Thread.sleep(500); } catch (Exception ee) { }
+				
 				//PathDetector pd = new PathDetector(local_path,remote_path,makefiles,null);
 				//pd.detectPaths();
 				//if (true) return;
@@ -486,13 +492,17 @@ public class SSHclient {
 		    		File makefile_backup = new File(makefile_path+".origin");
 		    		System.out.println("Backing up "+makefile_org);
 		    		FileUtils.copyFile(makefile_org, makefile_backup);
-		    		System.out.print("Transplant surgery start: ");  
+		    		System.out.print("Replacing placeholders: ");  
 		    		String s = FileUtils.readFileToString(makefile_org,"UTF-8");
-		    		System.out.print("cut...");
-		    		s = replacePlaceholdersInMakefile(s);
-		    		System.out.print("insertion...");
+		    		try {
+		    			String s2 = replacePlaceholdersInMakefile(s);
+		    			if (s2.length() > 0) s = s2;
+		    		} catch (Exception e) {
+		    			e.printStackTrace();
+		    			throw new NullPointerException();
+		    		}
 		    		saveString2File(s,makefile_path);
-		    		System.out.println("finished."); 
+		    		System.out.println(" finished."); 
 		    	}
 		    	System.out.println("Makefiles are ready.");
 		    }
@@ -527,20 +537,22 @@ public class SSHclient {
 		}
 
 	    /**
-	     * Replace placeholders matching pattern placeholder_pattern
+	     * Replace placeholders matching pattern placeholder_pattern.
+	     * If pattern not found, returns empty string.
 	     * @param s
 	     * @return
 	     */
-	    private String replacePlaceholdersInMakefile(String s) throws PatternSyntaxException {
+	    private String replacePlaceholdersInMakefile(String s) throws PatternSyntaxException, IllegalStateException, IndexOutOfBoundsException {
 	    	Matcher m = placeholder_pattern.matcher(s);
+	    	String new_s = "";
 	    	while (m.find()) {
 	    		String placeholder_name = m.group(1);
 	    		if (placeholder_name.equals("remote_path")) {
-	    			s = s.replaceFirst(m.group(0),remote_full_path);
-	    			//System.out.println("Replaced " + m.group(0) + " with " +remote_full_path);
+	    			new_s = m.replaceAll(remote_full_path);
+	    			System.out.print(" inserted " +remote_full_path);
 	    		}
 	    	}
-	    	return s;
+	    	return new_s;
 		}
 	    
 	    /**

@@ -5,6 +5,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+/**
+ * Class for running in new thread stderr output.
+ * @author peterbryzgalov
+ *
+ */
 public class stderrThread extends Thread {
 	private BufferedReader stderrReader;
 	
