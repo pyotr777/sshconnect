@@ -32,9 +32,9 @@ import com.trilead.ssh2.StreamGobbler;
 
 
 /**
- * Ver.0.21
  * Main function is here.
  * 
+ * Exit code when exception set to 1.
  * Placeholders replacement changed. Now syntax is #[placeholder_name] 
  * Simultaneous stdout and stderr output. 
  * Error handling.
@@ -49,7 +49,8 @@ import com.trilead.ssh2.StreamGobbler;
  */
 
 public class SSHclient {
-
+	
+	private static String version="0.22";
 	
 	/**
 	 * @param args
@@ -58,7 +59,7 @@ public class SSHclient {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public static void main(String[] args) {
-		System.out.println("Welcome to SSH transportation center!\nWe shall make your code at remote location and download the product files.\n");
+		System.out.println("SSHconnect Ver."+version+"\n\nWelcome to SSH transportation center!\nWe shall make your code at remote location and download the product files.\n");
 		if (args.length>0) {
 			System.out.print("Command line arguments: ");
 
@@ -119,17 +120,19 @@ public class SSHclient {
 			ssh_connection.makeConnect();
 		} catch (IOException e) {
 			e.printStackTrace();
-			return;
+			System.exit(1);
 		} catch (JSchException e) {
 			e.printStackTrace();
 			System.err.println("Could not connect to "+ssh_connection.user+":"+ssh_connection.password+"@" + ssh_connection.host);
-			return;
+			System.exit(1);
 		} catch (SftpException e) {
 			e.printStackTrace();
-			return;
+			System.exit(1);
 		} catch (Exception e) {
 			e.printStackTrace();
+			System.exit(1);
 		}
+		System.exit(0);
 	}
 	
 		
@@ -295,7 +298,7 @@ public class SSHclient {
 		 * @throws SftpException
 		 * @throws NullPointerException
 		 */
-		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException {
+		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException, Exception {
 			
 			System.out.print("Creating connection to "+host+":"+port+"...");
 			
@@ -360,7 +363,7 @@ public class SSHclient {
 				// 8.
 				//Remove remote temporary directory and archive				
 				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);
+				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
 			} finally {
 				System.out.println("Closing connections.");
 				//orionSSH
@@ -372,7 +375,6 @@ public class SSHclient {
 				session.disconnect();
 
 				System.out.println("All tasks complete.");
-				System.exit(0);
 			}
 	    }
 
