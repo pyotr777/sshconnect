@@ -12,3 +12,4 @@ bin/ssh/connect/SSHclient$SSHbasic.class
 bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.png
 *.ucls
+keys/*

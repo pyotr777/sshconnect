@@ -32,25 +32,16 @@ import com.trilead.ssh2.StreamGobbler;
 
 
 /**
- * Main function is here.
  * 
- * Exit code when exception set to 1.
- * Placeholders replacement changed. Now syntax is #[placeholder_name] 
- * Simultaneous stdout and stderr output. 
- * Error handling.
- * Works with K-scope.
+ * Utility for remote parsing Fortran programs with atool.
  *  
- * Orion SSH + JSch
- * Parsing Makefiles for replacement placeholders
- * Unique temporary directory names
- * 
  * @author Peter Bryzgalov
  *
  */
 
 public class SSHclient {
 	
-	private static String version="0.22";
+	private static String version="0.23";
 	
 	/**
 	 * @param args
@@ -118,17 +109,16 @@ public class SSHclient {
 		
 		try {
 			ssh_connection.makeConnect();
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(1);
 		} catch (JSchException e) {
 			e.printStackTrace();
-			System.err.println("Could not connect to "+ssh_connection.user+":"+ssh_connection.password+"@" + ssh_connection.host);
+			System.err.println("Could not connect (JSch) to "+ssh_connection.user+"@" + ssh_connection.host);
 			System.exit(1);
 		} catch (SftpException e) {
 			e.printStackTrace();
+			System.err.println("Could not connect (sftp) to "+ssh_connection.user+"@" + ssh_connection.host);
 			System.exit(1);
 		} catch (Exception e) {
+			System.err.println("Could not connect to "+ssh_connection.user+"@" + ssh_connection.host);
 			e.printStackTrace();
 			System.exit(1);
 		}
@@ -153,15 +143,18 @@ public class SSHclient {
 		else return !f.isDirectory();
 	}
 
-
+	
 	static class SSHconnect {
-		
+	
+		String conf_filename = "sshconnect_conf.txt";
 		// Initializing parameters with default values
 	    String host = ""; // host IP  
 	    String user = ""; // username for SSH connection  
 	    String password = ""; // password for SSH connection  
 	    int group_id; // user group ("kscope") ID	   
-	    int port; // default SSH port  
+	    int port; // default SSH port
+	    String key="",passphrase="";
+	    boolean use_key_authentication = false; // If password authentication for JSch fails, do not try it again with Orion. Force key authentication.
 	    
 		// local project folder. Must contain Makefile and all files necessary for building.  
 	    String local_path = ""; 
@@ -205,7 +198,7 @@ public class SSHclient {
 	    	// Read parameters from configuration file
     		Properties prop = new Properties();
     		System.out.print("Initialization start...");
-    		prop.load(new FileInputStream("config.txt"));
+    		prop.load(new FileInputStream(conf_filename));
     		
     		make = updateProperty(prop,"make");
     		make_options = prop.getProperty("make_options"); // no need to remove spaces
@@ -217,8 +210,10 @@ public class SSHclient {
     		user = updateProperty(prop, "user");
     		if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not found in config.txt. This is a required propery. Set ssh user name for connecting to remote server.");
     		
-    		password = updateProperty(prop, "password");
-    		if (password.length() < 1) throw new InvalidPreferencesFormatException("'password' property not found in config.txt. This is a required propery. Set ssh user password for connecting to remote server.");
+    		password = updateProperty(prop, "password"); // If password == "" authenticate with key.
+    		
+    		key = updateProperty(prop,"key");
+    		passphrase = updateProperty(prop,"passphrase");
     		
     		try {
     			group_id = Integer.parseInt(updateProperty(prop, "group_id"));
@@ -299,24 +294,17 @@ public class SSHclient {
 		 * @throws NullPointerException
 		 */
 		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException, Exception {
-			
-			System.out.print("Creating connection to "+host+":"+port+"...");
-			
-			// Orion SSH
-			Connection orion_conn = new Connection(host,port);
-			orion_conn.connect();
-
-			boolean isAuthenticated = orion_conn.authenticateWithPassword(user, password);
-
-			if (isAuthenticated == false)
-				throw new IOException("Authentication on server "+host+":" +port+" with "+ user+":" + password+ " failed.");
-			
-			System.out.println(" authenticated.");
 			// 1.
-			// JSch connect and upload
+			// JSch connect
 			// get a new session    
 			System.out.print("Opening SFTP channel...");
-			session = new_session();  
+			session = new_session();
+			System.out.println(" Authenticated.");
+
+			System.out.print("Creating connection to "+host+":"+port+"...");
+			Connection orion_conn = newOrionConnection();
+			System.out.println(" Authenticated.");
+			
 			try {
 				channel=session.openChannel("sftp");
 				channel.connect();
@@ -377,6 +365,55 @@ public class SSHclient {
 				System.out.println("All tasks complete.");
 			}
 	    }
+
+		/**
+		 * @return
+		 * @throws IOException
+		 */
+		private Connection newOrionConnection() throws IOException {
+			// Orion SSH connection
+			Connection orion_conn = new Connection(host,port);
+			
+			boolean isAuthenticated = false;
+			if (!use_key_authentication) {
+				orion_conn.connect();
+				try {
+					isAuthenticated = orion_conn.authenticateWithPassword(user, password);
+				}
+				catch (IOException e) {				
+					isAuthenticated = false;										
+				}
+
+				if (isAuthenticated == false) {
+					System.out.print(" Password authentication ("+ user+":" + password+ ") failed.");
+					orion_conn.close();
+					if (key.length() < 1) {
+						// Cannot use key authentication. Password authentication failed. 
+						throw new IOException("Could not connect to "+host);
+					}
+				}
+			}
+			
+			try {
+				if (isAuthenticated == false) {
+					orion_conn.connect();
+					System.out.print(" Authenticating with key... ");
+					isAuthenticated = orion_conn.authenticateWithPublicKey(user, new File(key), passphrase);
+					use_key_authentication = true;
+				}
+			}
+			catch (IOException e) {
+				orion_conn.close();
+				isAuthenticated = false;
+			}
+
+			if (isAuthenticated == false) {
+				System.out.println(" Failed.");
+				throw new IOException("Authentication with key "+key+"("+passphrase+") on server "+host+":" +port+" failed.");
+			}
+
+			return orion_conn;
+		}
 
 		/**
 		 * Return relative path reachable from toppath
@@ -596,14 +633,45 @@ public class SSHclient {
 		}
 
 		private com.jcraft.jsch.Session new_session()  throws JSchException {
-    		JSch shell = new JSch();
-    		com.jcraft.jsch.Session session = shell.getSession(user, host, port);  
-    		  
-	        // set user password and connect to a channel  
-	        session.setUserInfo(new SSHUserInfo(password));  
-	        session.connect();  
-	        return session;
-    	}	
+			JSch shell = new JSch();
+			com.jcraft.jsch.Session session = shell.getSession(user, host, port);
+			boolean need_key_authentication = false;
+			
+			if (password.length() < 1) { 
+				System.out.print(" no password provided. ");
+				need_key_authentication = true;
+			} 
+			else 
+			{
+				// set user password and connect to a channel  
+				session.setUserInfo(new SSHUserInfo(password));  
+				try {
+					session.connect();
+				} catch (JSchException e) {
+					need_key_authentication = true;
+					System.out.print(" Password authentication failed. ");
+				}
+			}
+			
+			if (need_key_authentication) {		        	
+				if (key.length() > 0) {	     
+					System.out.print(" Trying key authentication... ");
+					shell.addIdentity(new File(key).getAbsolutePath(), passphrase);
+					session = shell.getSession(user, host, port);
+					session.setUserInfo(new SSHUserInfo());  
+					try {
+						session.connect();
+					} catch (JSchException je) {
+						System.err.println("Cannot pass key authentication. Check your passphrase and key settings in configuration file.");
+						throw je;
+					}
+					use_key_authentication = true;
+				} else {
+					throw new JSchException("Password authentication failed. No key provided.");
+				}
+			}
+			return session;
+		}	
 		
 		/**
     	 * Create filename for zip archive from path, same as the lowest level directory name in the path.
@@ -654,6 +722,10 @@ public class SSHclient {
         SSHUserInfo(String password) {  
             this.password = password;  
         }  
+        
+        SSHUserInfo() {  
+              
+        } 
   
         public String getPassphrase() {  
             return null;  

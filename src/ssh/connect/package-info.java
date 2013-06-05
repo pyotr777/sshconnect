@@ -1,14 +1,17 @@
 /**
- *  v.0.22
- *  2013.05.31
+ *  v.0.23
+ *  2013.06.05
  * 
  * 
  *  Last added features:
- *  
+ * 
+ * Key authentication (work with password too)
  * Simultaneous stdout and stderr output. 
  * Error handling.
  * Works with K-scope.
- * 
+ * Orion SSH + JSch
+ * Parsing Makefiles for replacement placeholders
+ * Unique temporary directory names
  *  
  *  
  *  Parameters:
@@ -20,16 +23,18 @@
  * 4. source code directory 
  *  
  * Parameters must be set in config.txt:
- * 1. host - host address  
- * 2. user - remote user name for connecting by SSH
- * 3. password - remote user password
- * 4. group_id - remote "kscope" group ID
- * 5. port - host SSH port number. Default 22.
- * 6. remote_path - remote location to used for creating temporary files
- * 7. file_filter - pattern for filtering out unnecessary files from source code directory. 
+ * 	host - host address  
+ * 	user - remote user name for connecting by SSH
+ * 	password - remote user password
+ * 	key - RSA private key file path
+ *	passphrase - key passphrase   (password, key and passphrase are optional, but need password or key and passphrase to authenticate on the server)
+ *	group_id - remote "kscope" group ID
+ *	port - host SSH port number. Default 22.
+ *	remote_path - remote location to used for creating temporary files
+ *	file_filter - pattern for filtering out unnecessary files from source code directory. 
  * Default is ".*,*.tar,*.html,*.zip,*.jpg.*.orgin".
  * These files will stay untouched on local machine, but will not be uploaded to server.  
- * 8. makefiles - makefiles to look into for replacement placeholders
+ *	makefiles - makefiles to look into for replacement placeholders
  *  
  *  
  *  
