@@ -1,10 +1,12 @@
 /**
- *  v.0.23
- *  2013.06.05
+ *  v.0.25
+ *  2013.06.07
  * 
  * 
  *  Last added features:
  * 
+ * Custom make command support
+ * Client time before server bug corrected
  * Key authentication (work with password too)
  * Simultaneous stdout and stderr output. 
  * Error handling.
@@ -16,27 +18,32 @@
  *  
  *  Parameters:
  * 
- * Receive parameters from command line arguments (order important!):
+ * Receive parameters from command-line arguments (order important!):
  * 1. make command (make)
  * 2. make options (make_options)
- * 3. make file (makefiles)
- * 4. source code directory 
+ * 3. makefile (makefiles)
+ * 4. source code directory (local_path)
  *  
- * Parameters must be set in config.txt:
- * 	host - host address  
+ * Parameters MUST be set in configuration file:
+ * 	host - host address
+ * 	port - host SSH port number. Default 22.  
  * 	user - remote user name for connecting by SSH
- * 	password - remote user password
- * 	key - RSA private key file path
+ * 	password - remote user password OR
+ *	{
+ * 	key - RSA private key file path 
  *	passphrase - key passphrase   (password, key and passphrase are optional, but need password or key and passphrase to authenticate on the server)
- *	group_id - remote "kscope" group ID
- *	port - host SSH port number. Default 22.
+ *	}
  *	remote_path - remote location to used for creating temporary files
  *	file_filter - pattern for filtering out unnecessary files from source code directory. 
  * Default is ".*,*.tar,*.html,*.zip,*.jpg.*.orgin".
- * These files will stay untouched on local machine, but will not be uploaded to server.  
+ * These files will stay untouched on local machine, but will not be uploaded to server. 
+ * 
+ * Parameters CAN be set in configuration file (defaults to use if command-line argument is not provided): 
  *	makefiles - makefiles to look into for replacement placeholders
- *  
- *  
+ *	local_path - local path to use in case it is not set through command-line arguments.
+ *	make command - command to execute to start remote make.
+ *	make options - options for "make" command.
+ *    
  *  
  *  Workflow:
  *  

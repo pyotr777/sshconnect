@@ -1,7 +1,6 @@
 package ssh.connect;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * Class for detecting and replacing paths in text files.
@@ -60,6 +60,11 @@ public class PathDetector {
 			}
 			
 		}
+	}
+	
+	public static boolean isAbsolutePath(String path) throws IOException {
+		String canonical_path = new File(path).getCanonicalPath();
+		return FilenameUtils.equalsNormalized(canonical_path, path);
 	}
 
 }

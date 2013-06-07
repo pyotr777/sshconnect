@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 
 import com.jcraft.jsch.ChannelSftp;
@@ -41,7 +42,8 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static String version="0.23";
+	private static String version="0.25";
+	public static String conf_filename = "sshconnect_conf.txt";
 	
 	/**
 	 * @param args
@@ -61,10 +63,10 @@ public class SSHclient {
 		}		
 		SSHconnect ssh_connection = null;
 		try {
-			ssh_connection = new SSHconnect(); // read parameters from config.txt
+			ssh_connection = new SSHconnect(); // read parameters from conf_file
 		} catch (IOException e) {
     		e.printStackTrace();
-    		System.err.println("Couldn't read from configuration file: config.txt must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file:\nhost\nuser\npassword\ngroup_id\nremote_path.");
+    		System.err.println("Couldn't read from configuration file: config.txt must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file "+conf_filename+":\nhost\nuser\npassword\nremote_path.");
     		return;
     	} catch (Exception e) {
     		e.printStackTrace();
@@ -102,6 +104,20 @@ public class SSHclient {
 		// setting make command from command line 1st parameter
 		if (args.length > 0) {
 			ssh_connection.make = args[0];
+			if (!ssh_connection.make.equals("make")) {
+				// If make command is not "make", but some file
+				// Convert absolute path (produced if used K-scope "refer" button in New Project dialog) to relative to local_path.
+				// make path must be subdirectory of local_path.
+				try {
+					if (PathDetector.isAbsolutePath(ssh_connection.make)) ssh_connection.make = "./" +getRelativePath(ssh_connection.local_path, ssh_connection.make);
+					else ssh_connection.make = "./"+FilenameUtils.normalize(ssh_connection.make); // remove extra dots
+					System.out.println("Make command: "+ ssh_connection.make);
+				} catch (IOException e) {
+					System.err.println("Make file path is not a subdirectory of local_path.\nmake:"+args[0]+ "\nlocal_path: "+ssh_connection.local_path);
+					e.printStackTrace();
+					System.exit(1);
+				}
+			}
 		}
 		System.out.println(" finished.");
 		
@@ -125,7 +141,33 @@ public class SSHclient {
 		System.exit(0);
 	}
 	
-		
+	/**
+	 * Convert absolute path abs_path to relative to base_path.
+	 * abs_path must be subdirectory of base_path. 
+	 * 
+	 * @param base_path
+	 * @param abs_path
+	 * @return relative path
+	 */
+	private static String getRelativePath(String base_path, String abs_path) throws IOException {
+		 // Normalize the paths
+        String normalized_abs_path = new File(abs_path).getCanonicalPath();
+        String normalized_base_path = new File(base_path).getCanonicalPath();
+        if (normalized_base_path.charAt(normalized_base_path.length()-1)!= File.separatorChar) normalized_base_path = normalized_base_path + File.separator;
+        
+        String relative_path = "";
+        
+        if (normalized_abs_path.indexOf(normalized_base_path) == 0) {
+        	relative_path = normalized_abs_path.substring(normalized_base_path.length());
+        } else if (normalized_abs_path.indexOf(normalized_base_path) > 0) {
+        	System.err.println("Something wrong with these paths: \nbase: " + base_path + "\nabs:  "+abs_path);
+        	throw new IOException("Couldn't process these paths:\nnorm_base: "+normalized_base_path+"\nnorm_abs:  "+normalized_abs_path);
+        }
+        
+		return relative_path;
+	}
+
+
 	/**
 	 * Check if path exists.
 	 * True if path exists, otherwise - false 
@@ -144,14 +186,15 @@ public class SSHclient {
 	}
 
 	
+
+	
 	static class SSHconnect {
 	
-		String conf_filename = "sshconnect_conf.txt";
+		
 		// Initializing parameters with default values
 	    String host = ""; // host IP  
 	    String user = ""; // username for SSH connection  
-	    String password = ""; // password for SSH connection  
-	    int group_id; // user group ("kscope") ID	   
+	    String password = ""; // password for SSH connection 
 	    int port; // default SSH port
 	    String key="",passphrase="";
 	    boolean use_key_authentication = false; // If password authentication for JSch fails, do not try it again with Orion. Force key authentication.
@@ -214,12 +257,6 @@ public class SSHclient {
     		
     		key = updateProperty(prop,"key");
     		passphrase = updateProperty(prop,"passphrase");
-    		
-    		try {
-    			group_id = Integer.parseInt(updateProperty(prop, "group_id"));
-    		} catch (NumberFormatException e) {
-    			throw new InvalidPreferencesFormatException("'group_id' propery not found or not a number in config.txt. This is a required property. Provide 'kscope' group id on remote server.");    			
-    		}
     		
     		try {
     			port = Integer.parseInt(updateProperty(prop, "port"));
@@ -322,7 +359,9 @@ public class SSHclient {
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
-				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && unzip -o "+archive+" && cd "+noExtension(archive)+" && " + make + " " + make_options+ " "+getRelativePathFromTop(makefile_execute,local_path),true,true,true);
+				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && unzip -o "+archive, true,true,true);
+				if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && chmod u+x "+make, true,true,false);  // Add executable permission if make command is not "make".
+				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && " + make + " " + make_options+ " "+getRelativePathFromTop(makefile_execute,local_path),true,true,true);
 				
 				// 6. Pick up xml files
 				String str_response = executeOrionCommands(orion_conn, "cd "+remote_full_path+" && find -name \"*.xml\"",true,false,true);
@@ -555,7 +594,6 @@ public class SSHclient {
 		    if (zip_file.exists()) {
 			    FileInputStream file_stream = new FileInputStream(zip_file);
 			    sftp_channel.put(file_stream, archive, monitor, mode); 
-			    sftp_channel.chgrp(group_id, archive); 
 		    }
 		    System.out.println("Archive uploaded. Cleaning up.");
 		    
