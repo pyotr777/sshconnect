@@ -62,9 +62,23 @@ public class PathDetector {
 		}
 	}
 	
+	/**
+	 * Returns true if path is absolute.
+	 * 
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
 	public static boolean isAbsolutePath(String path) throws IOException {
-		String canonical_path = new File(path).getCanonicalPath();
-		return FilenameUtils.equalsNormalized(canonical_path, path);
+		String canonical_path = FilenameUtils.normalizeNoEndSeparator(new File(path).getCanonicalPath());
+		String norm_path = FilenameUtils.normalizeNoEndSeparator(path);
+		String prefix = FilenameUtils.getPrefix(path);
+		if (prefix.equals(File.separator)) {
+			//System.out.println("Have good prefix: " + prefix);
+			return true;
+		}
+		//System.out.println(norm_path+" vs "+canonical_path);
+		return canonical_path.equals(path);
 	}
 
 }
