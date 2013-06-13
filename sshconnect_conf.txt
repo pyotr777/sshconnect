@@ -15,10 +15,10 @@ passphrase = riken.aics
 make = make
 
 # Make command options
-#make_options = -a -b -c
+make_options = -f
 
 # Location of source files
-#local_path = /Users/peterbryzgalov/work/NICAM-K.xml
+local_path = /Users/peterbryzgalov/work/NICAM-K.xml
 
 # Remote location 
 remote_path = /home/sshuser/kscope/

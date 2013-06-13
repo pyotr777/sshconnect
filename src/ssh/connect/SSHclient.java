@@ -3,6 +3,7 @@ package ssh.connect;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;  
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -10,6 +11,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureClassLoader;
 import java.util.Properties;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.regex.Matcher;
@@ -42,8 +44,9 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static String version="0.25";
-	public static String conf_filename = "sshconnect_conf.txt";
+	private static final String VERSION ="0.26";
+	public static final String CONFIG_FILE = "sshconnect_conf.txt";
+	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
 	/**
 	 * @param args
@@ -52,75 +55,38 @@ public class SSHclient {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public static void main(String[] args) {
-		System.out.println("SSHconnect Ver."+version+"\n\nWelcome to SSH transportation center!\nWe shall make your code at remote location and download the product files.\n");
+		System.out.println("SSHconnect Ver."+VERSION+"\n\nWelcome to SSH transportation center!\nWe shall make your code at remote location and download the product files.\n");
 		if (args.length>0) {
 			System.out.print("Command line arguments: ");
 
 			for (String arg: args) {
-				System.out.print(" "+arg);
+				System.out.print(" "+arg+",");
 			}
 			System.out.println(" ");
 		}		
+		System.out.print("Initialization start...");
 		SSHconnect ssh_connection = null;
 		try {
 			ssh_connection = new SSHconnect(); // read parameters from conf_file
 		} catch (IOException e) {
     		e.printStackTrace();
-    		System.err.println("Couldn't read from configuration file: config.txt must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file "+conf_filename+":\nhost\nuser\npassword\nremote_path.");
-    		return;
+    		System.err.println("Couldn't read from configuration file: "+CONFIG_FILE+" must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file:\nhost\nuser\npassword\nremote_path.");
+    		System.exit(1);
     	} catch (Exception e) {
     		e.printStackTrace();
-    		return;
+    		System.exit(1);
     	}
-		// Set parameters from command line
-		// setting local_path value from command line 4th arguments 
-		if (args.length > 3) {
-			ssh_connection.local_path = args[3]; 
-			if (!checkPath(ssh_connection.local_path, true)) {
-				System.err.println("Input parameter "+args[3]+" is not a directory. 4th command line parameter must be local path where source files are located.");
-				return;
-			}
-		}
 		
-		// setting makefile_execute value from command line 3rd argument 
-		if (args.length  > 2) {
-			ssh_connection.makefile_execute = args[2];
-			if (!checkPath(ssh_connection.makefile_execute, false)) {
-				System.err.println("Input parameter "+args[2]+" is not a file. 3rd command line parameter must be local path to makefile.");
-				return;
-			}
+		// set SSHconnect parameters from command-line arguments
+		try { 
+			setSSHconnectParameters(args, ssh_connection);
 		}
-		// If makefiles not defined in config.txt, use value from command line argument
-		if (ssh_connection.makefiles_process.length() ==0 && ssh_connection.makefile_execute.length() > 0) {
-			ssh_connection.makefiles_process = ssh_connection.makefile_execute;
-			System.err.println("'makefiles' property not found in config.txt. Using command line parameter for list of makfiles to look into for replacement placeholders: "+ ssh_connection.makefiles_process);
-		}
-		
-		// setting make_options from command line 2nd parameter
-		if (args.length > 1) {
-			ssh_connection.make_options = args[1];
-		}
-		
-		// setting make command from command line 1st parameter
-		if (args.length > 0) {
-			ssh_connection.make = args[0];
-			if (!ssh_connection.make.equals("make")) {
-				// If make command is not "make", but some file
-				// Convert absolute path (produced if used K-scope "refer" button in New Project dialog) to relative to local_path.
-				// make path must be subdirectory of local_path.
-				try {
-					if (PathDetector.isAbsolutePath(ssh_connection.make)) ssh_connection.make = "./" +getRelativePath(ssh_connection.local_path, ssh_connection.make);
-					else ssh_connection.make = "./"+FilenameUtils.normalize(ssh_connection.make); // remove extra dots
-					System.out.println("Make command: "+ ssh_connection.make);
-				} catch (IOException e) {
-					System.err.println("Make file path is not a subdirectory of local_path.\nmake:"+args[0]+ "\nlocal_path: "+ssh_connection.local_path);
-					e.printStackTrace();
-					System.exit(1);
-				}
-			}
+		catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
 		System.out.println(" finished.");
-		
+				
 		//detectPaths(basic_connection.local_path); //  on hold.
 		
 		try {
@@ -140,6 +106,70 @@ public class SSHclient {
 		}
 		System.exit(0);
 	}
+
+	/**
+	 * Set ssh_connection properties based on args.
+	 * 
+	 * @param args
+	 * @param ssh_connection
+	 * @throws IOException 
+	 */
+	static void setSSHconnectParameters(String[] args, SSHconnect ssh_connection) throws IOException, IllegalArgumentException  {
+		// Set parameters from command line
+		
+		// setting local_path value from command line 4th arguments 
+		if (args.length > 3 && args[3].length() > 0) {
+			ssh_connection.local_path = new File(args[3]).getCanonicalPath(); 
+			if (!checkPath(ssh_connection.local_path, true)) {
+				System.err.println("Input parameter "+args[3]+" is not a directory. 4th command line parameter must be local path where source files are located.");
+				throw new IllegalArgumentException();
+			}
+		}
+		
+		// setting makefile_execute value from command line 3rd argument 
+		if (args.length  > 2 && args[2].length() > 0) {
+			ssh_connection.makefile_execute = new File(args[2]).getCanonicalPath();
+			if (!checkPath(ssh_connection.makefile_execute, false)) {
+				System.err.println("Input parameter "+args[2]+" is not a file or doesn't exist. 3rd command line parameter must be local path to the makefile used as parameter for make command.");
+				throw new IllegalArgumentException();
+			}
+			if (ssh_connection.makefiles_process.length() == 0 && ssh_connection.makefile_execute.length() > 0) {
+				// If makefiles_process not defined in configuration file, use value from command-line argument
+				ssh_connection.makefiles_process = args[2];
+				System.err.println("'makefiles' property not found in "+CONFIG_FILE+". Using command line parameter for list of makfiles to look into for replacement placeholders: "+ args[2]);
+			} 
+		} else {  
+			// if makefile_execute parameter not set in command-line
+			if (ssh_connection.makefile_execute.length() == 0 && ssh_connection.makefiles_process.length() > 0) { 
+				// if ssh_connection.makefile_execute is not set and ssh_connection.makefile_process is set
+				ssh_connection.makefile_execute = ssh_connection.makefiles_process;
+				System.err.println("Makefile not set in command-line arguments. Using configuration file value of makefiles to parse: "+ ssh_connection.makefiles_process);
+			}
+		}
+		
+		// setting make_options from command line 2nd parameter
+		if (args.length > 1 && args[1].length() > 0) {
+			ssh_connection.make_options = args[1];
+		}
+		
+		// setting make command from command line 1st parameter
+		if (args.length > 0 && args[0].length() > 0) {
+			ssh_connection.make = args[0];
+			if (!ssh_connection.make.equals("make")) {
+				// If make command is not "make", but some file
+				// Convert absolute path (produced if used K-scope "refer" button in New Project dialog) to relative to local_path.
+				// make path must be subdirectory of local_path.
+				try {
+					if (PathDetector.isAbsolutePath(ssh_connection.make)) ssh_connection.make = "./" +getRelativePath(ssh_connection.local_path, ssh_connection.make);
+					else ssh_connection.make = "./"+FilenameUtils.normalize(ssh_connection.make); // remove extra dots
+					System.out.print("Make command: "+ ssh_connection.make);
+				} catch (IOException e) {
+					System.err.println("Make file path is not a subdirectory of local_path.\nmake:"+args[0]+ "\nlocal_path: "+ssh_connection.local_path);
+					throw e;					
+				}
+			}
+		}
+	}
 	
 	/**
 	 * Convert absolute path abs_path to relative to base_path.
@@ -149,11 +179,13 @@ public class SSHclient {
 	 * @param abs_path
 	 * @return relative path
 	 */
-	private static String getRelativePath(String base_path, String abs_path) throws IOException {
+	 static String getRelativePath(String base_path, String abs_path) throws IOException {
 		 // Normalize the paths
         String normalized_abs_path = new File(abs_path).getCanonicalPath();
         String normalized_base_path = new File(base_path).getCanonicalPath();
         if (normalized_base_path.charAt(normalized_base_path.length()-1)!= File.separatorChar) normalized_base_path = normalized_base_path + File.separator;
+        
+        //System.out.println(normalized_abs_path + " vs " + normalized_base_path);
         
         String relative_path = "";
         
@@ -170,7 +202,7 @@ public class SSHclient {
 
 	/**
 	 * Check if path exists.
-	 * True if path exists, otherwise - false 
+	 * True if path exists, and is of correct type (folder/file) 
 	 * @param path
 	 * @param folder - true if we need path to be a directory, false - otherwise
 	 */
@@ -182,7 +214,7 @@ public class SSHclient {
 			return false;
 		}
 		if (folder)	return f.isDirectory();
-		else return !f.isDirectory();
+		else return (f.exists() && !f.isDirectory());
 	}
 
 	
@@ -190,7 +222,6 @@ public class SSHclient {
 	
 	static class SSHconnect {
 	
-		
 		// Initializing parameters with default values
 	    String host = ""; // host IP  
 	    String user = ""; // username for SSH connection  
@@ -207,7 +238,7 @@ public class SSHclient {
 	    
 	    // Two kinds of makefiles parameters:
 	    // makefiles to look for replacement placeholders
-	    String makefiles_process = "";  // priority value - from config.txt 
+	    String makefiles_process = "";  // priority value - from configuration file 
 	    // makefile to execute
 	    String makefile_execute = ""; // priority value - from command line 3rd argument (args[2])
 	    
@@ -235,46 +266,51 @@ public class SSHclient {
     	ChannelSftp sftp_channel = null;
     	String[] makefiles_list = null;
 	    
-	    
 	    public SSHconnect()  throws IOException, IllegalArgumentException, NoSuchAlgorithmException, InvalidPreferencesFormatException   {	
 	    	
 	    	// Read parameters from configuration file
-    		Properties prop = new Properties();
-    		System.out.print("Initialization start...");
-    		prop.load(new FileInputStream(conf_filename));
-    		
-    		make = updateProperty(prop,"make");
-    		make_options = prop.getProperty("make_options"); // no need to remove spaces
-    		if (make_options == null) make_options = "";
-    		local_path = updateProperty(prop, "local_path");  
-    		
-    		host = updateProperty(prop, "host");
-    		
-    		user = updateProperty(prop, "user");
-    		if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not found in config.txt. This is a required propery. Set ssh user name for connecting to remote server.");
-    		
-    		password = updateProperty(prop, "password"); // If password == "" authenticate with key.
-    		
-    		key = updateProperty(prop,"key");
-    		passphrase = updateProperty(prop,"passphrase");
-    		
-    		try {
-    			port = Integer.parseInt(updateProperty(prop, "port"));
-    		} catch (NumberFormatException e) {
-    			port = 22;
-    			System.err.println("'port' propery not found or not a number in config.txt. Default port 22 is used.");
-    		}
-    		  			
-    		remote_path = updateProperty(prop, "remote_path");     
-    		if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not found in config.txt. This is a required propery. Set remote path on server to create temporary directories.");
-    		
-    		String ff = updateProperty(prop, "file_filter");
-    		// *.origin - reserved for original copies of edited make files.
-    		if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
-    		else System.err.println("'file_filter' property not found in config.txt. Default is used: "+ file_filter);
-    		
-    		// Makefiles to look into for replacement pattern 
-    		makefiles_process = updateProperty(prop, "makefiles");
+	    	Properties prop = new Properties();
+
+	    	//SecureClassLoader cl = (SecureClassLoader) SSHclient.class.getClassLoader();
+	    	//System.out.println(cl.getResource("").getPath());
+	    	//prop.load(cl.getResourceAsStream(conf_filename));
+	    	try {
+	    		prop.load(new FileInputStream(CONFIG_FILE));
+	    	} catch (FileNotFoundException e) {
+	    		prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
+	    	}
+
+
+	    	make = updateProperty(prop,"make");
+	    	local_path = updateProperty(prop, "local_path");  
+
+	    	host = updateProperty(prop, "host");
+
+	    	user = updateProperty(prop, "user");
+	    	if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not found in "+CONFIG_FILE+". This is a required propery. Set ssh user name for connecting to remote server.");
+
+	    	password = updateProperty(prop, "password"); // If password == "" authenticate with key.
+
+	    	key = updateProperty(prop,"key");
+	    	passphrase = updateProperty(prop,"passphrase");
+
+	    	try {
+	    		port = Integer.parseInt(updateProperty(prop, "port"));
+	    	} catch (NumberFormatException e) {
+	    		port = 22;
+	    		System.err.println("'port' propery not found or not a number in "+CONFIG_FILE+". Default port 22 is used.");
+	    	}
+
+	    	remote_path = updateProperty(prop, "remote_path");     
+	    	if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not found in "+CONFIG_FILE+". This is a required propery. Set remote path on server to create temporary directories.");
+
+	    	String ff = updateProperty(prop, "file_filter");
+	    	// *.origin - reserved for original copies of edited make files.
+	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
+	    	else System.err.println("'file_filter' property not found in "+CONFIG_FILE+". Default is used: "+ file_filter);
+
+	    	// Makefiles to look into for replacement pattern 
+	    	makefiles_process = updateProperty(prop, "makefiles");
     		
     		// Remote tmp directory name generation
     		tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, getTmpDirName(System.getProperty("user.name")));
