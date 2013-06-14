@@ -116,6 +116,25 @@ public class SSHclient {
 	 */
 	static void setSSHconnectParameters(String[] args, SSHconnect ssh_connection) throws IOException, IllegalArgumentException  {
 		// Set parameters from command line
+
+		// setting make command from command line 1st parameter
+		if (args.length > 0 && args[0].length() > 0) {
+			ssh_connection.make = args[0];
+			if (!ssh_connection.make.equals("make")) {
+				// If make command is not "make", but some file
+				// Convert absolute path (produced if used K-scope "refer" button in New Project dialog) to relative to local_path.
+				// make path must be subdirectory of local_path.
+				try {
+					if (PathDetector.isAbsolutePath(ssh_connection.make)) ssh_connection.make = "./" +getRelativePath(ssh_connection.local_path, ssh_connection.make);
+					else ssh_connection.make = "./"+FilenameUtils.normalize(ssh_connection.make); // remove extra dots
+					System.out.print("Make command: "+ ssh_connection.make);
+				} catch (IOException e) {
+					System.err.println("Make file path is not a subdirectory of local_path.\nmake:"+args[0]+ "\nlocal_path: "+ssh_connection.local_path);
+					throw e;					
+				}
+			}
+		}
+		
 		
 		// setting local_path value from command line 4th arguments 
 		if (args.length > 3 && args[3].length() > 0) {
@@ -150,25 +169,9 @@ public class SSHclient {
 		// setting make_options from command line 2nd parameter
 		if (args.length > 1 && args[1].length() > 0) {
 			ssh_connection.make_options = args[1];
-		}
+		} 
 		
-		// setting make command from command line 1st parameter
-		if (args.length > 0 && args[0].length() > 0) {
-			ssh_connection.make = args[0];
-			if (!ssh_connection.make.equals("make")) {
-				// If make command is not "make", but some file
-				// Convert absolute path (produced if used K-scope "refer" button in New Project dialog) to relative to local_path.
-				// make path must be subdirectory of local_path.
-				try {
-					if (PathDetector.isAbsolutePath(ssh_connection.make)) ssh_connection.make = "./" +getRelativePath(ssh_connection.local_path, ssh_connection.make);
-					else ssh_connection.make = "./"+FilenameUtils.normalize(ssh_connection.make); // remove extra dots
-					System.out.print("Make command: "+ ssh_connection.make);
-				} catch (IOException e) {
-					System.err.println("Make file path is not a subdirectory of local_path.\nmake:"+args[0]+ "\nlocal_path: "+ssh_connection.local_path);
-					throw e;					
-				}
-			}
-		}
+		
 	}
 	
 	/**
@@ -395,8 +398,9 @@ public class SSHclient {
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
-				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && unzip -o "+archive, true,true,true);
-				if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && chmod u+x "+make, true,true,false);  // Add executable permission if make command is not "make".
+				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && unzip -o "+archive, true,true,true); 
+				//if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && chmod u+x "+make, true,true,false);  // Add executable permission if make command is not "make".
+				if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && find . -type f -name '*.sh' -exec chmod u+x {} \\;", true,true,true);  // Add executable permission if make command is not "make".
 				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && " + make + " " + make_options+ " "+getRelativePathFromTop(makefile_execute,local_path),true,true,true);
 				
 				// 6. Pick up xml files
@@ -426,7 +430,7 @@ public class SSHclient {
 				// 8.
 				//Remove remote temporary directory and archive				
 				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
+				//executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
 			} finally {
 				System.out.println("Closing connections.");
 				//orionSSH
