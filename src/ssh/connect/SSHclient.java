@@ -43,7 +43,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.27";
+	private static final String VERSION ="0.28";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -111,7 +111,7 @@ public class SSHclient {
 	/**
 	 * Set ssh_connection properties based on args.
 	 * 
-	 * @param args
+	 * @param args make command, make options, make file, local path
 	 * @param ssh_connection
 	 * @throws IOException 
 	 */
@@ -238,6 +238,7 @@ public class SSHclient {
 	    String local_path = ""; 
 	    String remote_path = ""; 
 	    String remote_full_path = ""; // path including temporary directory and archive name without extension
+	    String atool_path = ""; // path to atool and F_Front
 	    String archive = "";
 	    
 	    // Two kinds of makefiles parameters:
@@ -274,10 +275,6 @@ public class SSHclient {
 	    	
 	    	// Read parameters from configuration file
 	    	Properties prop = new Properties();
-
-	    	//SecureClassLoader cl = (SecureClassLoader) SSHclient.class.getClassLoader();
-	    	//System.out.println(cl.getResource("").getPath());
-	    	//prop.load(cl.getResourceAsStream(conf_filename));
 	    	try {
 	    		prop.load(new FileInputStream(CONFIG_FILE));
 	    	} catch (FileNotFoundException e) {
@@ -308,6 +305,8 @@ public class SSHclient {
 	    	remote_path = updateProperty(prop, "remote_path");     
 	    	if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not found in "+CONFIG_FILE+". This is a required propery. Set remote path on server to create temporary directories.");
 
+	    	atool_path = updateProperty(prop,"atool_path");
+	    	
 	    	String ff = updateProperty(prop, "file_filter");
 	    	// *.origin - reserved for original copies of edited make files.
 	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
@@ -399,9 +398,10 @@ public class SSHclient {
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
-				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && tar -xf "+archive, true,true,true); 
-				//if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && chmod u+x "+make, true,true,false);  // Add executable permission if make command is not "make".
-				//if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && find . -type f -name '*.sh' -exec chmod u+x {} \\;", true,true,true);  // Add executable permission if make command is not "make".
+				String path_command = "";
+				if (atool_path.length() > 0) path_command = "export PATH=$PATH:"+atool_path+" && ";
+				
+				executeOrionCommands(orion_conn, path_command+"echo $PATH && cd "+remote_tmp+"  && tar -xf "+archive, true,true,true); 
 				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && " + make + " " + make_options+ " "+getRelativePathFromTop(makefile_execute,local_path),true,true,true);
 				
 				// 6. Pick up xml files
@@ -430,7 +430,7 @@ public class SSHclient {
 				
 				// 8.
 				//Remove remote temporary directory and archive				
-				System.out.println("Cleaning remote location: " + tmp_dir);
+				//System.out.println("Cleaning remote location: " + tmp_dir);
 				//executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
 			} finally {
 				System.out.println("Closing connections.");

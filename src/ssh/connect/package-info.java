@@ -1,10 +1,11 @@
 /**
- *  v.0.27
+ *  v.0.28
  *  2013.06.17
  * 
  * 
  *  Last added features:
  * 
+ * Added atool_path parameter. If set in configuration file, atool_path will be added to PATH environment variable on server before running make command. 
  * Use tar archive to keep file privileges
  * Custom make command support
  * Client time before server bug corrected
