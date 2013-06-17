@@ -16,14 +16,27 @@ public class SearchByNameFilter implements FileFilter {
 
 	Pattern filter_pattern = null;
 	Pattern accept_pattern = null;
+	boolean verbose = true;
+	
 	
 	/**
 	 * @param filter pattern for filtering out
 	 * @param accept pattern for accepting
 	 */
 	public SearchByNameFilter(String accept, String filter) {
+		this(accept,filter,true);
+	}
+	
+	
+	/**
+	 * @param filter pattern for filtering out
+	 * @param accept pattern for accepting
+	 * @param verbose Reports on accepting/filtering individual files
+	 */
+	public SearchByNameFilter(String accept, String filter, boolean verbose) {
 		if (filter!=null) filter_pattern = Pattern.compile(convertFilterPattern(filter));
 		if (accept!=null) accept_pattern = Pattern.compile(convertFilterPattern(accept));
+		this.verbose = verbose;
 	}	
 	
 	/**
@@ -43,7 +56,7 @@ public class SearchByNameFilter implements FileFilter {
 			m = accept_pattern.matcher(filename);
 			if (m.matches()) {
 				try {
-					System.out.println("Accepted "+node.getCanonicalPath());
+					if (verbose) System.out.println("Accepted "+node.getCanonicalPath());
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -56,7 +69,7 @@ public class SearchByNameFilter implements FileFilter {
 			m = filter_pattern.matcher(filename);
 			if (m.matches()) {
 				try {
-					System.out.println("Filtered "+node.getCanonicalPath());
+					if (verbose) System.out.println("Filtered "+node.getCanonicalPath());
 				} catch (IOException e) {
 					e.printStackTrace();
 				}

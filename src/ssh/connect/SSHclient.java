@@ -11,7 +11,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureClassLoader;
 import java.util.Properties;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.regex.Matcher;
@@ -44,7 +43,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.26";
+	private static final String VERSION ="0.27";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -65,9 +64,11 @@ public class SSHclient {
 			System.out.println(" ");
 		}		
 		System.out.print("Initialization start...");
+		
+		// read parameters from configuration file
 		SSHconnect ssh_connection = null;
 		try {
-			ssh_connection = new SSHconnect(); // read parameters from conf_file
+			ssh_connection = new SSHconnect(); 
 		} catch (IOException e) {
     		e.printStackTrace();
     		System.err.println("Couldn't read from configuration file: "+CONFIG_FILE+" must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file:\nhost\nuser\npassword\nremote_path.");
@@ -398,9 +399,9 @@ public class SSHclient {
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
-				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && unzip -o "+archive, true,true,true); 
+				executeOrionCommands(orion_conn, "echo $PATH && cd "+remote_tmp+"  && tar -xf "+archive, true,true,true); 
 				//if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && chmod u+x "+make, true,true,false);  // Add executable permission if make command is not "make".
-				if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && find . -type f -name '*.sh' -exec chmod u+x {} \\;", true,true,true);  // Add executable permission if make command is not "make".
+				//if (!make.equals("make"))  executeOrionCommands(orion_conn, "cd "+remote_full_path+ " && find . -type f -name '*.sh' -exec chmod u+x {} \\;", true,true,true);  // Add executable permission if make command is not "make".
 				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && " + make + " " + make_options+ " "+getRelativePathFromTop(makefile_execute,local_path),true,true,true);
 				
 				// 6. Pick up xml files
@@ -581,7 +582,7 @@ public class SSHclient {
 	        
 	        
 	        // Append remote path with tmp directory and archive name directory
-	        String archive_path = archiveName(local_path);
+	        String archive_path = AppTar.archiveName(local_path);  
 		    archive = fileName(archive_path);
 		    remote_full_path = remote_tmp+"/" +noExtension(archive);
 	        
@@ -625,20 +626,20 @@ public class SSHclient {
 		    	System.out.println("Makefiles are ready.");
 		    }
 		    
-		    // Create ZIP archive
+		    // Create  archive
 		    System.out.println("Packing files for transportation.");
-		    AppZip appZip = new AppZip(local_path, file_filter);
-	    	File zip_file = new File(archive_path);
-	    	appZip.zipIt(zip_file);
+		    AppTar archiver = new AppTar(local_path, file_filter);
+	    	File archive_file = new File(archive_path);
+	    	archiver.tarIt(archive_file);
 		    System.out.println("Uploading " + archive_path);		    
-		    if (zip_file.exists()) {
-			    FileInputStream file_stream = new FileInputStream(zip_file);
+		    if (archive_file.exists()) {
+			    FileInputStream file_stream = new FileInputStream(archive_file);
 			    sftp_channel.put(file_stream, archive, monitor, mode); 
 		    }
 		    System.out.println("Archive uploaded. Cleaning up.");
 		    
 		    // Delete local archive file
-		    zip_file.delete();
+		    archive_file.delete();
 		    
 		    // Restore original makefiles
 		    if (makefiles_process.length() > 0) {
@@ -752,17 +753,6 @@ public class SSHclient {
 		}	
 		
 		/**
-    	 * Create filename for zip archive from path, same as the lowest level directory name in the path.
-    	 * @param path	path name
-    	 * @return zip archive name
-    	 */
-    	private String archiveName(String path) {
-    		String zip_name;
-			zip_name = path + ".zip";		
-			return zip_name;
-		}
-    	
-    	/**
     	 * Return only file name given full path to a file
     	 * @param full_path	Full path with filename
     	 * @return	Filename without path

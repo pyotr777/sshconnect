@@ -118,6 +118,18 @@ public class AppZip
 		return file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
 	}
 	
+	
+	/**
+	 * Create filename for zip archive from path, same as the lowest level directory name in the path.
+	 * @param path	path name
+	 * @return zip archive name
+	 */
+	public static String archiveName(String path) {
+		String zip_name;
+		zip_name = path + ".zip";		
+		return zip_name;
+	}
+	
 }
 
 

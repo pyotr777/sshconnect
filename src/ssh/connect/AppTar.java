@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.regex.Pattern;
 
 import org.xeustechnologies.jtar.TarEntry;
+import org.xeustechnologies.jtar.TarHeader;
 import org.xeustechnologies.jtar.TarOutputStream;
  
 
@@ -56,7 +57,7 @@ public class AppTar
 		// Check if source path is valid
 	    File local = new File(source);
 	    if (!local.exists()) throw new IOException("Source path for creating archive is not valid (not exists): "+source);
-	    SearchByNameFilter sbn_filter = new SearchByNameFilter(null, filter);
+	    SearchByNameFilter sbn_filter = new SearchByNameFilter(null, filter,false);
 	    FileListGenerator fl_generator = new FileListGenerator(this.SOURCE_FOLDER,sbn_filter);
 	    file_list = fl_generator.getList();
 	}
@@ -75,10 +76,17 @@ public class AppTar
 			System.out.println("Creating tar : " + tar_file.getCanonicalPath());
 			for(File file : this.file_list) {
 				System.out.print(" file added : " + file);
-				TarEntry te= new TarEntry(file, file.getName());
+				TarEntry te= new TarEntry(file, generateTarEntry(file.getAbsolutePath()));
 				te.setModTime(file.lastModified());
 				Date modificationTime = te.getModTime();
-				System.out.println("\t\t\t\t\t"+modificationTime);
+				System.out.print("\t\t"+modificationTime);
+				// copy file owner permissions
+				// default permission: 644				
+				TarHeader tar_header = te.getHeader();
+				if (file.canExecute()) tar_header.mode = tar_header.mode | 0100; // add execute permission
+				if (file.canWrite()) tar_header.mode = tar_header.mode | 0400; // add write permission
+				else tar_header.mode = tar_header.mode & 0177577; // remove write permission
+				System.out.println("\t\t "+ Integer.toOctalString(tar_header.mode - 0100000));
 				tos.putNextEntry(te);
 				BufferedInputStream in =  new BufferedInputStream(new FileInputStream(file));
 				try {
@@ -116,10 +124,20 @@ public class AppTar
 	 * @param file file path
 	 * @return Formatted file path
 	 */
-	private String generateZipEntry(String file){
+	private String generateTarEntry(String file){
 		return file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
 	}
 	
+	/**
+	 * Create filename for archive from path, same as the lowest level directory name in the path.
+	 * @param path	path name
+	 * @return archive name
+	 */
+	public static String archiveName(String path) {
+		String tar_name;
+		tar_name = path + ".tar";		
+		return tar_name;
+	}
 }
 
 

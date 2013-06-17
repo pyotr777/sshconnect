@@ -1,10 +1,11 @@
 /**
- *  v.0.25
- *  2013.06.07
+ *  v.0.27
+ *  2013.06.17
  * 
  * 
  *  Last added features:
  * 
+ * Use tar archive to keep file privileges
  * Custom make command support
  * Client time before server bug corrected
  * Key authentication (work with password too)
