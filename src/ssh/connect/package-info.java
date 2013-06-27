@@ -1,10 +1,12 @@
 /**
- *  v.0.28
- *  2013.06.17
+ *  v.0.30
+ *  2013.06.27
  * 
  * 
  *  Last added features:
  * 
+ * New format of command-line parameters. Build command is one String. Preprocess files is a new parameter.
+ * Check if remote temporary directory exists before creating it. If exists, add counter to the end of the name, increase counter value and check again. 
  * Added atool_path parameter. If set in configuration file, atool_path will be added to PATH environment variable on server before running make command. 
  * Use tar archive to keep file privileges
  * Custom make command support
