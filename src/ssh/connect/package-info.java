@@ -1,10 +1,11 @@
 /**
- *  v.0.30
- *  2013.06.27
+ *  v.0.31
+ *  2013.07.02
  * 
  * 
  *  Last added features:
  * 
+ * Correct processing of single quotes around paths in command line - if path contain spaces, it must be single-quoted.
  * New format of command-line parameters. Build command is one String. Preprocess files is a new parameter.
  * Check if remote temporary directory exists before creating it. If exists, add counter to the end of the name, increase counter value and check again. 
  * Added atool_path parameter. If set in configuration file, atool_path will be added to PATH environment variable on server before running make command. 

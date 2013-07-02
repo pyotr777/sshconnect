@@ -43,7 +43,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.30";
+	private static final String VERSION ="0.31";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -120,58 +120,74 @@ public class SSHclient {
 
 		for (int i = 0; i < args.length; i++ ) {
 			if (args[i].indexOf("-")==0) {
-				if (args[i].startsWith("-ap")) {
-					ssh_connection.atool_path = args[i+1];
+				if (args[i].equals("-ap")) {
+					ssh_connection.atool_path = trimApostrophe(args[i+1]);
 					i++;
 				} 
-				else if (args[i].startsWith("-h")) {
+				else if (args[i].equals("-h")) {
 					ssh_connection.host = args[i+1];
 					i++;
 				} 
-				else if (args[i].startsWith("-p")) {
+				else if (args[i].equals("-p")) {
 					ssh_connection.port = Integer.parseInt(args[i+1]);
 					i++;
 				} 
-				else if (args[i].startsWith("-u")) {
+				else if (args[i].equals("-u")) {
 					ssh_connection.user = args[i+1];
 					i++;
 				} 
-				else if (args[i].startsWith("-pw")) {
+				else if (args[i].equals("-pw")) {
 					ssh_connection.password = args[i+1];
 					i++;
 				} 
-				else if (args[i].startsWith("-k")) {
-					ssh_connection.key = args[i+1];
+				else if (args[i].equals("-k")) {
+					ssh_connection.key = trimApostrophe(args[i+1]);
 					i++;
 				} 
-				else if (args[i].startsWith("-rp")) {
-					ssh_connection.remote_path = args[i+1];
+				else if (args[i].equals("-rp")) {
+					ssh_connection.remote_path = trimApostrophe(args[i+1]);
 					i++;
 				} 
-				else if (args[i].startsWith("-m")) {
-					ssh_connection.build_command = args[i+1];
+				else if (args[i].equals("-m")) {
+					ssh_connection.build_command = trimApostrophe(args[i+1]); // remove single quotes around argument
 					i++;
 				} 
-				else if (args[i].startsWith("-lp")) {
-					ssh_connection.local_path = args[i+1];					
+				else if (args[i].equals("-lp")) {
+					ssh_connection.local_path = trimApostrophe(args[i+1]);
+					File lp_file = new File(ssh_connection.local_path);
+					ssh_connection.local_path = lp_file.getCanonicalPath();
 					i++;
 					if (!checkPath(ssh_connection.local_path, true)) {
 						System.err.println("Input parameter "+args[i]+" is not a directory. Parameter after -lp option must be local path where source files are located.");
 						throw new IllegalArgumentException();
 					}
 				} 
-				else if (args[i].startsWith("-ff")) {
+				else if (args[i].equals("-ff")) {
 					ssh_connection.file_filter = args[i+1];
 					i++;
 				} 
-				else if (args[i].startsWith("-pf")) {
-					ssh_connection.preprocess_files = args[i+1];
+				else if (args[i].equals("-pf")) {
+					ssh_connection.preprocess_files = trimApostrophe(args[i+1]);
 					i++;
 				} 
 			}
 		}
 	}
 	
+	
+	/**
+	 * Remove single quotes around argument
+	 * @param arg
+	 * @return
+	 */
+	private static String trimApostrophe(String arg) {
+		arg = arg.trim();
+		int f_pos = arg.indexOf("'");
+		int l_pos = arg.lastIndexOf("'");
+		if (f_pos == 0 && l_pos == arg.length()-1) arg = arg.substring(1, arg.length()-1);
+		return arg;
+	}
+
 	/**
 	 * Convert absolute path abs_path to relative to base_path.
 	 * abs_path must be subdirectory of base_path. 
@@ -210,12 +226,13 @@ public class SSHclient {
 	private static boolean checkPath(String path, boolean folder) {
 		File f=null;
 		try {
-			f = new File(path);
+			f = new File(path.replaceAll("'", ""));
 		} catch (NullPointerException e) {
 			return false;
 		}
-		if (folder)	return f.isDirectory();
-		else return (f.exists() && !f.isDirectory());
+		boolean is_folder = f.isDirectory();
+		if (folder)	return is_folder;
+		else return (f.exists() && !is_folder);
 	}
 
 	
@@ -392,7 +409,7 @@ public class SSHclient {
 				if (atool_path.length() > 0) path_command = "export PATH=$PATH:"+atool_path+" && ";
 				
 				executeOrionCommands(orion_conn, path_command+"echo $PATH && cd "+remote_tmp+"  && tar -xf "+archive, true,true,true); 
-				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && " + build_command ,true,true,true);
+				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && which atool && " + build_command ,true,true,true);
 				
 				// 6. Pick up xml files
 				String str_response = executeOrionCommands(orion_conn, "cd "+remote_full_path+" && find -name \"*.xml\"",true,false,true);
