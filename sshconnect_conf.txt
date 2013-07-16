@@ -1,6 +1,4 @@
-#SSHconnect settings
-#Mon Jun 17 17:28:08 JST 2013
-atool_path=/home/sshuser/kscope/bin/
+add_path=/home/sshuser/kscope/bin/
 host=127.0.0.1
 port=3022
 user=sshuser  

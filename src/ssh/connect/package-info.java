@@ -1,10 +1,11 @@
 /**
- *  v.0.31
- *  2013.07.02
+ *  v.0.32
+ *  2013.07.12
  * 
  * 
  *  Last added features:
  * 
+ * Read all parameters from command line. 
  * Correct processing of single quotes around paths in command line - if path contain spaces, it must be single-quoted.
  * New format of command-line parameters. Build command is one String. Preprocess files is a new parameter.
  * Check if remote temporary directory exists before creating it. If exists, add counter to the end of the name, increase counter value and check again. 
@@ -23,38 +24,36 @@
  *  
  *  Parameters:
  * 
- * Receive parameters from command-line arguments (order important!):
- * 1. make command (make)
- * 2. make options (make_options)
- * 3. makefile (makefiles)
- * 4. source code directory (local_path)
- *  
- * Parameters MUST be set in configuration file:
- * 	host - host address
- * 	port - host SSH port number. Default 22.  
- * 	user - remote user name for connecting by SSH
- * 	password - remote user password OR
- *	{
- * 	key - RSA private key file path 
- *	passphrase - key passphrase   (password, key and passphrase are optional, but need password or key and passphrase to authenticate on the server)
- *	}
- *	remote_path - remote location to used for creating temporary files
- *	file_filter - pattern for filtering out unnecessary files from source code directory. 
- * Default is ".*,*.tar,*.html,*.zip,*.jpg.*.orgin".
- * These files will stay untouched on local machine, but will not be uploaded to server. 
+ * All parameters can be set in configuration file or pass through command line options.
+ * Command line options have higher priority. 
  * 
- * Parameters CAN be set in configuration file (defaults to use if command-line argument is not provided): 
- *	makefiles - makefiles to look into for replacement placeholders
- *	local_path - local path to use in case it is not set through command-line arguments.
- *	make command - command to execute to start remote make.
- *	make options - options for "make" command.
- *    
- *  
+ * Command line options and parameter names in configuration file
+ * 	-ap		add_path			Path added to PATH environment variable on the server. Use it to add atool path to server PATH.		
+ *	-h		host				Server host address		
+ *	-p		port				Server port number for SSH connection
+ *	-u		user				User name for SSH connection authentication		
+ *	-pw		password			Password for SSH user		
+ *	-k		key					Path to RSA key for authentication on the server 		
+ *	-ph		passphrase			Passphrase for RSA key		
+ * Password, key and passphrase are optional, but need password or key and passphrase to authenticate on the server
+ *
+ *	-rp		remote_path			Path on the server to be used for temporary files 		
+ *	-m		build_command		Command to be executed on the server for building the project
+ * 1. 実行ファイルを指定する場合、ファイル名の前に"./"を指定しなければならない。
+ * 2. ファイル名（パス）にスペースが使われている場合はアポストロフィを使用しなければならない。例えば：　'./makeproject 1.sh'
+ *	
+ *	-lp		local_path			Path to source files, also the place to download intermediate code from the server after the project has been built	
+ *	-ff		file_filter			Comma-separated list of common filename patters to exclude files from uploading to the server
+ * Default is ".*,*.tar,*.html,*.zip,*.jpg.*.orgin".
+ * 
+ *	-pf		preprocess_files	Files with placeholders that must be replaced with server-side absolute path before the project is built on the server
+ * 
+ * 
  *  Workflow:
  *  
- * Parse makefiles and replace placeholders. 
+ * Parse preprocess_files and replace placeholders. 
  * Upload source code to remote location.
- * Execute make command on remote.
+ * Execute build command on the server.
  * Download product files (XML files).
  * 
  */

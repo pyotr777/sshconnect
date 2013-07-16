@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 
 import com.jcraft.jsch.ChannelSftp;
@@ -43,7 +42,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.31";
+	private static final String VERSION ="0.32";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -121,7 +120,7 @@ public class SSHclient {
 		for (int i = 0; i < args.length; i++ ) {
 			if (args[i].indexOf("-")==0) {
 				if (args[i].equals("-ap")) {
-					ssh_connection.atool_path = trimApostrophe(args[i+1]);
+					ssh_connection.add_path = trimApostrophe(args[i+1]);
 					i++;
 				} 
 				else if (args[i].equals("-h")) {
@@ -144,6 +143,10 @@ public class SSHclient {
 					ssh_connection.key = trimApostrophe(args[i+1]);
 					i++;
 				} 
+				else if (args[i].equals("-ph")) {
+					ssh_connection.passphrase = args[i+1];
+					i++;
+				} 
 				else if (args[i].equals("-rp")) {
 					ssh_connection.remote_path = trimApostrophe(args[i+1]);
 					i++;
@@ -158,7 +161,7 @@ public class SSHclient {
 					ssh_connection.local_path = lp_file.getCanonicalPath();
 					i++;
 					if (!checkPath(ssh_connection.local_path, true)) {
-						System.err.println("Input parameter "+args[i]+" is not a directory. Parameter after -lp option must be local path where source files are located.");
+						System.err.println("Input parameter "+args[i]+" ("+ssh_connection.local_path+") is not a directory. Parameter after -lp option must be local path where source files are located.");
 						throw new IllegalArgumentException();
 					}
 				} 
@@ -252,7 +255,7 @@ public class SSHclient {
 	    String local_path = ""; 
 	    String remote_path = ""; 
 	    String remote_full_path = ""; // path including temporary directory and archive name without extension
-	    String atool_path = ""; // path to atool and F_Front
+	    String add_path = ""; // path to atool and F_Front
 	    String archive = "";
 	    
 	    // files to look for replacement placeholders
@@ -292,7 +295,7 @@ public class SSHclient {
 	    		prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
 	    	}
 	    	
-	    	atool_path = updateProperty(prop,"atool_path");
+	    	add_path = updateProperty(prop,"add_path");
 	    	host = updateProperty(prop, "host");
 	    	try {
 	    		port = Integer.parseInt(updateProperty(prop, "port"));
@@ -406,13 +409,13 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (atool_path.length() > 0) path_command = "export PATH=$PATH:"+atool_path+" && ";
+				if (add_path.length() > 0) path_command = "export PATH=$PATH:'"+add_path+"' && ";
 				
-				executeOrionCommands(orion_conn, path_command+"echo $PATH && cd "+remote_tmp+"  && tar -xf "+archive, true,true,true); 
-				executeOrionCommands(orion_conn,  "cd "+remote_full_path+ " && which atool && " + build_command ,true,true,true);
+				executeOrionCommands(orion_conn, path_command+"echo $PATH && cd '"+remote_tmp+"'  && tar -xf '"+archive+"'", true,true,true); 
+				executeOrionCommands(orion_conn,  "cd '"+remote_full_path+ "' && which atool && " + build_command ,true,true,true);
 				
 				// 6. Pick up xml files
-				String str_response = executeOrionCommands(orion_conn, "cd "+remote_full_path+" && find -name \"*.xml\"",true,false,true);
+				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find -name \"*.xml\"",true,false,true);
 				
 				// 7. Download XML files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
@@ -437,8 +440,8 @@ public class SSHclient {
 				
 				// 8.
 				//Remove remote temporary directory and archive				
-				//System.out.println("Cleaning remote location: " + tmp_dir);
-				//executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
+				System.out.println("Cleaning remote location: " + tmp_dir);
+				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
 			} finally {
 				System.out.println("Closing connections.");
 				//orionSSH
@@ -636,7 +639,11 @@ public class SSHclient {
 		    			e.printStackTrace();
 		    			throw new NullPointerException();
 		    		}
-		    		saveString2File(s,makefile_path);
+		    		File parsed_makefile = saveString2File(s,makefile_path);
+		    		// Copy modification time
+		    		long mdate = makefile_backup.lastModified();
+		    		parsed_makefile.setLastModified(mdate);
+		    		
 		    		System.out.println(" finished."); 
 		    	}
 		    	System.out.println("Makefiles are ready.");
@@ -683,7 +690,7 @@ public class SSHclient {
 	    		String placeholder_name = m.group(1);
 	    		if (placeholder_name.equals("remote_path")) {
 	    			new_s = m.replaceAll(remote_full_path);
-	    			System.out.print(" inserted " +remote_full_path);
+	    			//System.out.print(" inserted " +remote_full_path);
 	    		}
 	    	}
 	    	return new_s;
@@ -692,12 +699,14 @@ public class SSHclient {
 	    /**
 	     * Saves string to a file
 	     * @param s
+	     * @return new File instance
 	     * @throws IOException 
 	     */
-	    private void saveString2File(String s, String full_path) throws IOException {
+	    private File saveString2File(String s, String full_path) throws IOException {
 	    	File file = new File(full_path);
 	    	file.createNewFile();
 	    	FileUtils.writeStringToFile(file, s, "UTF-8");
+	    	return file;
 	    }
 
 		/**
