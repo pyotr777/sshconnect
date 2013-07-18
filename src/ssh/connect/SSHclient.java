@@ -86,6 +86,20 @@ public class SSHclient {
 			System.exit(1);
 		}
 		System.out.println(" finished.");
+		
+		
+		// Remote tmp directory name generation
+		try {
+			ssh_connection.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, ssh_connection.getTmpDirName(System.getProperty("user.name")));
+		} catch (UnsupportedEncodingException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		ssh_connection.remote_tmp = ssh_connection.remote_path + "/" + ssh_connection.tmp_dir;
+		ssh_connection.remote_tmp = ssh_connection.remote_tmp.replaceAll("//", "/");	
 				
 		//detectPaths(basic_connection.local_path); //  on hold.
 		
@@ -325,10 +339,7 @@ public class SSHclient {
 	    	// Files to look into for replacement pattern 
 	    	preprocess_files = updateProperty(prop, "preprocess_files");
     		
-    		// Remote tmp directory name generation
-    		tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, getTmpDirName(System.getProperty("user.name")));
-    		remote_tmp = remote_path + "/" + tmp_dir;
-    		remote_tmp = remote_tmp.replaceAll("//", "/");	    		
+    		    		
     	}
     	
 	    /**
@@ -409,10 +420,10 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (add_path.length() > 0) path_command = "export PATH=$PATH:'"+add_path+"' && ";
+				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
 				
-				executeOrionCommands(orion_conn, path_command+"echo $PATH && cd '"+remote_tmp+"'  && tar -xf '"+archive+"'", true,true,true); 
-				executeOrionCommands(orion_conn,  "cd '"+remote_full_path+ "' && which atool && " + build_command ,true,true,true);
+				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xf '"+archive+"'", true,true,true); 
+				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up xml files
 				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find -name \"*.xml\"",true,false,true);
