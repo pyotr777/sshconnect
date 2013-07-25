@@ -18,7 +18,6 @@ import org.apache.commons.io.FilenameUtils;
 public class PathDetector {
 	
 	private String local_path;
-	private String remote_path;
 	private String accept_pattern;
 	private String reject_pattern;
 	
@@ -28,7 +27,6 @@ public class PathDetector {
 	public PathDetector(String local_path, String remote_path, String pattern, String reject_pattern) {
 		System.out.println("Local path: " + local_path);
 		this.local_path = local_path;
-		this.remote_path = remote_path;
 		this.accept_pattern = pattern;
 		this.reject_pattern = reject_pattern;
 	}
@@ -71,7 +69,7 @@ public class PathDetector {
 	 */
 	public static boolean isAbsolutePath(String path) throws IOException {
 		String canonical_path = FilenameUtils.normalizeNoEndSeparator(new File(path).getCanonicalPath());
-		String norm_path = FilenameUtils.normalizeNoEndSeparator(path);
+		FilenameUtils.normalizeNoEndSeparator(path);
 		String prefix = FilenameUtils.getPrefix(path);
 		if (prefix.equals(File.separator)) {
 			//System.out.println("Have good prefix: " + prefix);

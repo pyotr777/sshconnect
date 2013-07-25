@@ -17,7 +17,7 @@ import org.xeustechnologies.jtar.TarOutputStream;
  
 
 /**
- * Ver.0.1
+ * Ver.0.2
  * 
  * Add files to zip archive
  *  * 
@@ -34,6 +34,10 @@ public class AppTar
 	// Need to store files with short paths relative to the topmost folder in archive.
 	// Set inside setSource method.
 	private int SOURCE_PATH_SKIP_LENGTH = 0;
+	
+	private String source_folder = "";
+	private boolean renamed_folder = false;
+	private String new_folder = ""; // store new folder name after removing spaces from the name
 	
 	Pattern filter_pattern = null;
 
@@ -130,13 +134,61 @@ public class AppTar
 	
 	/**
 	 * Create filename for archive from path, same as the lowest level directory name in the path.
-	 * @param path	path name
+	 * @param path Project folder full path 
 	 * @return archive name
 	 */
-	public static String archiveName(String path) {
+	public String archiveName(String path) {
 		String tar_name;
-		tar_name = path + ".tar";		
+		// Get bottom level folder name
+		int last_separator = path.lastIndexOf(File.separator);
+		while (last_separator + 1 >= path.length() && last_separator > 0) {
+			path = path.substring(0,last_separator);
+		}
+		String last_folder = path.substring(last_separator+1);
+		this.source_folder = last_folder;		
+		String path_to_last_folder = path.substring(0, last_separator);
+		// Replace spaces
+		last_folder = removeSpaces(last_folder);
+		tar_name = path_to_last_folder + File.separator + last_folder + ".tar";		
 		return tar_name;
+	}
+
+	/**
+	 * Replace spaces in source folder name. It will be used as remote folder name for extracting source files from archive.
+	 * @param foldername
+	 * @return folder name with spaces replaces with "_"
+	 */
+	private String removeSpaces(String foldername) {
+		String new_foldername = foldername.replaceAll("\\s", "_");
+		if (!new_foldername.equals(foldername)) {
+			this.renamed_folder = true;
+			this.new_folder = new_foldername; // register new folder name without spaces
+		}
+		return new_foldername;
+	}
+
+	/**
+	 * True if we replaced spaces (false if there were no spaces) in source folder name
+	 * @return
+	 */
+	public boolean replacedSpaces() {
+		return this.renamed_folder;
+	}
+
+	/**
+	 * Return source folder name before replacing spaces in it.
+	 * @return
+	 */
+	public String getOriginalFolder() {
+		return this.source_folder;
+	}
+
+	/**
+	 * Return source folder name after replacing spaces in it
+	 * @return
+	 */
+	public String getNewFolder() {
+		return this.new_folder;
 	}
 }
 

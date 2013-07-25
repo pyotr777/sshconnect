@@ -42,7 +42,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.33";
+	private static final String VERSION ="0.34";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -67,7 +67,7 @@ public class SSHclient {
 		// read parameters from configuration file
 		SSHconnect ssh_connection = null;
 		try {
-			ssh_connection = new SSHconnect(); 
+			ssh_connection = new SSHconnect(args); 
 		} catch (IOException e) {
     		e.printStackTrace();
     		System.err.println("Couldn't read from configuration file: "+CONFIG_FILE+" must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file:\nhost\nuser\npassword\nremote_path.");
@@ -77,30 +77,10 @@ public class SSHclient {
     		System.exit(1);
     	}
 		
-		// set SSHconnect parameters from command-line arguments
-		try { 
-			setSSHconnectParameters(args, ssh_connection);
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		
 		System.out.println(" finished.");
 		
 		
-		// Remote tmp directory name generation
-		try {
-			ssh_connection.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, ssh_connection.getTmpDirName(System.getProperty("user.name")));
-		} catch (UnsupportedEncodingException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (NoSuchAlgorithmException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		ssh_connection.remote_tmp = ssh_connection.remote_path + "/" + ssh_connection.tmp_dir;
-		ssh_connection.remote_tmp = ssh_connection.remote_tmp.replaceAll("//", "/");	
-				
 		//detectPaths(basic_connection.local_path); //  on hold.
 		
 		try {
@@ -175,7 +155,7 @@ public class SSHclient {
 					ssh_connection.local_path = lp_file.getCanonicalPath();
 					i++;
 					if (!checkPath(ssh_connection.local_path, true)) {
-						System.err.println("Input parameter "+args[i]+" ("+ssh_connection.local_path+") is not a directory. Parameter after -lp option must be local path where source files are located.");
+						System.err.println("Input parameter "+args[i]+" ("+ssh_connection.local_path+") does not exist or is not a directory. Parameter after -lp option must be local directory path where source files are located.");
 						throw new IllegalArgumentException();
 					}
 				} 
@@ -271,6 +251,7 @@ public class SSHclient {
 	    String remote_full_path = ""; // path including temporary directory and archive name without extension
 	    String add_path = ""; // path to atool and F_Front
 	    String archive = "";
+	    String archive_path = "";
 	    
 	    // files to look for replacement placeholders
 	    String preprocess_files = "";  // priority value - from configuration file 
@@ -279,6 +260,7 @@ public class SSHclient {
 	    
 	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
 	    private String default_archive_filename = "archive.zip"; 
+	    private AppTar archiver;  // Used for operations with archive
 	    
 	    // Remote temporary folder name
 	    String tmp_dir = "";
@@ -299,7 +281,7 @@ public class SSHclient {
     	ChannelSftp sftp_channel = null;
     	String[] processfiles_list = null;
 	    
-	    public SSHconnect()  throws IOException, IllegalArgumentException, NoSuchAlgorithmException, InvalidPreferencesFormatException   {	
+	    public SSHconnect(String args[])  throws IOException, IllegalArgumentException, NoSuchAlgorithmException, InvalidPreferencesFormatException   {	
 	    	
 	    	// Read parameters from configuration file
 	    	Properties prop = new Properties();
@@ -338,8 +320,41 @@ public class SSHclient {
 
 	    	// Files to look into for replacement pattern 
 	    	preprocess_files = updateProperty(prop, "preprocess_files");
-    		
-    		    		
+	    	
+	    	
+	    	
+	    	// set SSHconnect parameters from command-line arguments
+			try { 
+				setSSHconnectParameters(args, this);
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+	    	
+			// Remote tmp directory name generation
+			try {
+				this.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, this.getTmpDirName(System.getProperty("user.name")));
+			} catch (UnsupportedEncodingException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (NoSuchAlgorithmException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			this.remote_tmp = this.remote_path + "/" + this.tmp_dir;
+			this.remote_tmp = this.remote_tmp.replaceAll("//", "/");	
+			
+	    	    		
+	    	archiver = new AppTar(local_path, file_filter);
+	    	// Append remote path with tmp directory and archive name directory	        
+	        archive_path = this.archiver.archiveName(local_path);  
+		    archive = fileName(archive_path);
+		    remote_full_path = remote_tmp+"/" +noExtension(archive);
+		    
+		    
+	        
+	            		
     	}
     	
 	    /**
@@ -416,6 +431,7 @@ public class SSHclient {
 				// 2. Create archive with source files,
 				// 3. Upload archive to temporary directory
 				createArchiveAndUpload();
+				
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
@@ -423,6 +439,8 @@ public class SSHclient {
 				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
 				
 				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xf '"+archive+"'", true,true,true); 
+				// rename new Folder to match archive name (with replaced spaces)
+				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
 				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up xml files
@@ -430,7 +448,7 @@ public class SSHclient {
 				
 				// 7. Download XML files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
-				System.out.print("Downloading "+filenames.length+" products. ");
+				System.out.print("Downloading "+(filenames.length-1) +" products to "+local_path+". ");
 				for (String filename:filenames) {
 					if (filename.length() < 2) continue;
 					String remote_filename =remote_full_path+"/"+filename;
@@ -517,22 +535,6 @@ public class SSHclient {
 		}
 
 		/**
-		 * Return relative path reachable from toppath
-		 *  
-		 * @param absolute_path
-		 * @param toppath
-		 * @return
-		 */
-		private String getRelativePathFromTop(String absolute,String toppath) {
-			if (absolute.length() == 0) return "";
-			File top = new File(toppath);
-			File abs = new File(absolute);
-			String relative = abs.getAbsolutePath().replaceFirst(top.getAbsolutePath(), "");
-			if (relative.substring(0, 1).equalsIgnoreCase(File.separator)) relative = relative.substring(1);
-			return relative;
-		}
-
-		/**
 		 * Execute remote commands over orionSSH connection
 		 * @param orion_conn Connection substance
 		 * @param commands Commands to execute
@@ -610,12 +612,6 @@ public class SSHclient {
 	        
 	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_tmp+").");
 	        
-	        
-	        // Append remote path with tmp directory and archive name directory
-	        String archive_path = AppTar.archiveName(local_path);  
-		    archive = fileName(archive_path);
-		    remote_full_path = remote_tmp+"/" +noExtension(archive);
-	        
 	        SftpProgressMonitor monitor = new MyProgressMonitor();
 		    int mode=ChannelSftp.OVERWRITE;
 		    sftp_channel.cd(remote_tmp);
@@ -662,7 +658,7 @@ public class SSHclient {
 		    
 		    // Create  archive
 		    System.out.println("Packing files for transportation.");
-		    AppTar archiver = new AppTar(local_path, file_filter);
+		    
 	    	File archive_file = new File(archive_path);
 	    	archiver.tarIt(archive_file);
 		    System.out.println("Uploading " + archive_path);		    
@@ -777,7 +773,7 @@ public class SSHclient {
 					try {
 						session.connect();
 					} catch (JSchException je) {
-						System.err.println("Cannot pass key authentication. Check your passphrase and key settings in configuration file.");
+						System.err.println("Cannot pass key authentication. Check your user name, key and passphrase settings in configuration file.");
 						throw je;
 					}
 					use_key_authentication = true;

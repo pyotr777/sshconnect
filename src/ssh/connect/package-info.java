@@ -1,10 +1,11 @@
 /**
- *  v.0.33
- *  2013.07.18
+ *  v.0.34
+ *  2013.07.24
  * 
  * 
  *  Last added features:
  * 
+ * Replace spaces in source folder name on the server before building project.
  * Read all parameters from command line. 
  * Correct processing of single quotes around paths in command line - if path contain spaces, it must be single-quoted.
  * New format of command-line parameters. Build command is one String. Preprocess files is a new parameter.
