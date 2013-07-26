@@ -62,6 +62,7 @@ public class AppTar
 	    File local = new File(source);
 	    if (!local.exists()) throw new IOException("Source path for creating archive is not valid (not exists): "+source);
 	    SearchByNameFilter sbn_filter = new SearchByNameFilter(null, filter,false);
+	    System.out.print(" Generating file list... ");
 	    FileListGenerator fl_generator = new FileListGenerator(this.SOURCE_FOLDER,sbn_filter);
 	    file_list = fl_generator.getList();
 	}

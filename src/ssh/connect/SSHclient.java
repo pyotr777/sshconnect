@@ -42,7 +42,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.34";
+	private static final String VERSION ="0.35";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -288,7 +288,12 @@ public class SSHclient {
 	    	try {
 	    		prop.load(new FileInputStream(CONFIG_FILE));
 	    	} catch (FileNotFoundException e) {
-	    		prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
+	    		try {
+	    			prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
+	    		} catch (FileNotFoundException e2) {
+	    			System.out.println("Configuration file "+CONFIG_FILE+" not found. ");
+	    			setDefaults(prop); // initialize with sensible default values
+	    		}
 	    	}
 	    	
 	    	add_path = updateProperty(prop,"add_path");
@@ -296,32 +301,22 @@ public class SSHclient {
 	    	try {
 	    		port = Integer.parseInt(updateProperty(prop, "port"));
 	    	} catch (NumberFormatException e) {
-	    		port = 22;
-	    		System.err.println("'port' propery not found or not a number in "+CONFIG_FILE+". Default port 22 is used.");
+	    		System.err.println("'port' propery in "+CONFIG_FILE+" not recognized: "+port+". Default port 22 is used.");
+	    		port = 22;	    		
 	    	}	    	
 	    	user = updateProperty(prop, "user");
-	    	if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not found in "+CONFIG_FILE+". This is a required propery. Set ssh user name for connecting to remote server.");
 	    	password = updateProperty(prop, "password"); // If password == "" authenticate with key.
 	    	key = updateProperty(prop,"key");
 	    	passphrase = updateProperty(prop,"passphrase");
-
-	    	remote_path = updateProperty(prop, "remote_path");
-	    	
-	    	build_command = updateProperty(prop, "build_command");
-	    	
-	    	if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not found in "+CONFIG_FILE+". This is a required propery. Set remote path on server to create temporary directories.");
-	    	local_path = updateProperty(prop, "local_path");  
-
-	    	
+	    	remote_path = updateProperty(prop, "remote_path");	    	
+	    	build_command = updateProperty(prop, "build_command");	    	
+	    	local_path = updateProperty(prop, "local_path");  	    	
 	    	String ff = updateProperty(prop, "file_filter");
 	    	// *.origin - reserved for original copies of edited make files.
 	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
-	    	else System.err.println("'file_filter' property not found in "+CONFIG_FILE+". Default is used: "+ file_filter);
-
+	    	
 	    	// Files to look into for replacement pattern 
 	    	preprocess_files = updateProperty(prop, "preprocess_files");
-	    	
-	    	
 	    	
 	    	// set SSHconnect parameters from command-line arguments
 			try { 
@@ -331,6 +326,9 @@ public class SSHclient {
 				e.printStackTrace();
 				System.exit(1);
 			}
+	    	// Check important parameters
+			if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not set. Set it in "+CONFIG_FILE+" or with command-line option -u. This is a required propery. Set ssh user name for connecting to remote server.");
+			if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not set. Set it in in "+CONFIG_FILE+" or with command-line option -rp. This is a required propery. Set remote path on server to create temporary directories.");
 	    	
 			// Remote tmp directory name generation
 			try {
@@ -351,13 +349,21 @@ public class SSHclient {
 	        archive_path = this.archiver.archiveName(local_path);  
 		    archive = fileName(archive_path);
 		    remote_full_path = remote_tmp+"/" +noExtension(archive);
-		    
-		    
-	        
 	            		
     	}
     	
 	    /**
+	     * Initializa properties with sensible default values
+	     * if configuration file not found.
+	     * @param prop
+	     */
+	    private void setDefaults(Properties prop) {
+			prop.setProperty("port", "22");
+			prop.setProperty("build_command", "make");
+			prop.setProperty("file_filter", "*.zip,*.tar,.DS*,*.ksx");			
+		}
+
+		/**
 	     * Return hashcode of a string, adopted to use as a filename part
 	     * @param name - some string
 	     * @return hashcode
@@ -555,7 +561,7 @@ public class SSHclient {
 			BufferedReader br = new BufferedReader(new InputStreamReader(stdout));
 			StringBuilder response = new StringBuilder();
 			// Read and display output
-			if (verbose && (display_stdout || display_stderr)) System.out.println("Displaying command session report:\n----------------------------------");
+			if (verbose && (display_stdout || display_stderr)) System.out.println("Command session report:\n----------------------------------");
 			if (display_stderr) {
 				(new stderrThread(stderr)).start(); // Display stderr in new thread
 			}

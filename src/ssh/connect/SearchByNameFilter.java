@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 /**
  * Filter out files that match filter,
  * or accept only files, that match accept.
- * If both set to not null, first check accept, then filter.
+ * If both are set to not null, first check accept, then filter.
  * @author peterbryzgalov
  */
 public class SearchByNameFilter implements FileFilter {

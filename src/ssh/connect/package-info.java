@@ -1,10 +1,12 @@
 /**
- *  v.0.34
- *  2013.07.24
+ *  v.0.35
+ *  2013.07.26
  * 
  * 
  *  Last added features:
  * 
+ * Local path detection in files: gives warning.
+ * Configuration file made optional.
  * Replace spaces in source folder name on the server before building project.
  * Read all parameters from command line. 
  * Correct processing of single quotes around paths in command line - if path contain spaces, it must be single-quoted.
