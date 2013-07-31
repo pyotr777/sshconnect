@@ -7,6 +7,6 @@ key=keys/sshuser_rsa
 passphrase=
 remote_path=/home/sshuser/kscope/
 local_path=/Users/peterbryzgalov/work/NICAM-K.xml
-file_filter=.*,*.tar,*.html,*.zip,*.o,*.xml,*.xmod
+file_filter=*.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx
 build_command=make
 preprocess_files=

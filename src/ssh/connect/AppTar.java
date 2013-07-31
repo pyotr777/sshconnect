@@ -148,8 +148,10 @@ public class AppTar
 		String last_folder = path.substring(last_separator+1);
 		this.source_folder = last_folder;		
 		String path_to_last_folder = path.substring(0, last_separator);
+		
+		// SPACES REPLACEMENT TURNED OFF
 		// Replace spaces
-		last_folder = removeSpaces(last_folder);
+		// last_folder = removeSpaces(last_folder);
 		tar_name = path_to_last_folder + File.separator + last_folder + ".tar";		
 		return tar_name;
 	}
@@ -159,14 +161,14 @@ public class AppTar
 	 * @param foldername
 	 * @return folder name with spaces replaces with "_"
 	 */
-	private String removeSpaces(String foldername) {
+	/*private String removeSpaces(String foldername) {
 		String new_foldername = foldername.replaceAll("\\s", "_");
 		if (!new_foldername.equals(foldername)) {
 			this.renamed_folder = true;
 			this.new_folder = new_foldername; // register new folder name without spaces
 		}
 		return new_foldername;
-	}
+	}*/
 
 	/**
 	 * True if we replaced spaces (false if there were no spaces) in source folder name

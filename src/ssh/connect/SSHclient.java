@@ -42,7 +42,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.35";
+	private static final String VERSION ="0.36";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -334,10 +334,8 @@ public class SSHclient {
 			try {
 				this.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, this.getTmpDirName(System.getProperty("user.name")));
 			} catch (UnsupportedEncodingException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (NoSuchAlgorithmException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 			this.remote_tmp = this.remote_path + "/" + this.tmp_dir;

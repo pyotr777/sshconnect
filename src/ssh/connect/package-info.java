@@ -1,10 +1,11 @@
 /**
- *  v.0.35
- *  2013.07.26
+ *  v.0.36
+ *  2013.07.31
  * 
  * 
  *  Last added features:
  * 
+ * Removed function: "Replace spaces in source folder name on the server before building project."
  * Local path detection in files: gives warning.
  * Configuration file made optional.
  * Replace spaces in source folder name on the server before building project.
