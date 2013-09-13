@@ -42,7 +42,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="0.36";
+	private static final String VERSION ="1.00";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
 	
@@ -160,7 +160,7 @@ public class SSHclient {
 					}
 				} 
 				else if (args[i].equals("-ff")) {
-					ssh_connection.file_filter = args[i+1];
+					ssh_connection.file_filter = args[i+1] +",*.origin";
 					i++;
 				} 
 				else if (args[i].equals("-pf")) {
@@ -442,7 +442,7 @@ public class SSHclient {
 				String path_command = "";
 				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
 				
-				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xf '"+archive+"'", true,true,true); 
+				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
 				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
 				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);

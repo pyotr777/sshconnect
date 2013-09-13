@@ -1,10 +1,11 @@
 /**
- *  v.0.36
- *  2013.07.31
+ *  v.1.00
+ *  2013.09.13
  * 
  * 
  *  Last added features:
  * 
+ * File filter arg parameter correction to exclude original Absolute path files. 
  * Removed function: "Replace spaces in source folder name on the server before building project."
  * Local path detection in files: gives warning.
  * Configuration file made optional.

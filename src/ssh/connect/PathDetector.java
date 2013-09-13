@@ -15,7 +15,7 @@ public class PathDetector {
 	
 	private String local_path;
 	//private Pattern path_pattern1 = Pattern.compile("([a-zA-Z]:)?([\\\\/]{1}?[a-zA-Z0-9\\s\\._-]+[\\\\/]??)+"); // at least one slash or backslash in a word (char sequence between spaces)
-	private String sp = File.separator;
+	private static String sp = File.separator;
 	String s; // file contents
 	
 	public PathDetector(String local_path) {
@@ -57,7 +57,7 @@ public class PathDetector {
 		String canonical_path = FilenameUtils.normalizeNoEndSeparator(new File(path).getCanonicalPath());
 		//FilenameUtils.normalizeNoEndSeparator(path);
 		String prefix = FilenameUtils.getPrefix(path);
-		if (prefix.equals(File.separator)) {
+		if (prefix.equals(sp)) {
 			//System.out.println("Have good prefix: " + prefix);
 			return true;
 		}
