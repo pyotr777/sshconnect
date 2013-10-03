@@ -13,3 +13,4 @@ bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.png
 *.ucls
 keys/*
+lib/jsch-0.1.50/src/*

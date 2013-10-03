@@ -35,7 +35,7 @@ public class AppTar
 	// Set inside setSource method.
 	private int SOURCE_PATH_SKIP_LENGTH = 0;
 	
-	private String source_folder = "";
+	private String source_folder_name = "";
 	private boolean renamed_folder = false;
 	private String new_folder = ""; // store new folder name after removing spaces from the name
 	
@@ -146,7 +146,7 @@ public class AppTar
 			path = path.substring(0,last_separator);
 		}
 		String last_folder = path.substring(last_separator+1);
-		this.source_folder = last_folder;		
+		this.source_folder_name = last_folder;		
 		String path_to_last_folder = path.substring(0, last_separator);
 		
 		// SPACES REPLACEMENT TURNED OFF
@@ -183,7 +183,7 @@ public class AppTar
 	 * @return
 	 */
 	public String getOriginalFolder() {
-		return this.source_folder;
+		return this.source_folder_name;
 	}
 
 	/**

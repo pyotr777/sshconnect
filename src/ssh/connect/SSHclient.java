@@ -7,7 +7,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;  
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -42,9 +45,9 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.00";
+	private static final String VERSION ="1.01";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
-	public static final String RESOURCE_PATH = "/Users/peterbryzgalov/work/workspaceJava/SSHconnect/";  // used to find configuration file 
+	public static String RESOURCE_PATH;  // used to find configuration file 
 	
 	/**
 	 * @param args
@@ -64,24 +67,19 @@ public class SSHclient {
 		}		
 		System.out.print("Initialization start...");
 		
-		// read parameters from configuration file
 		SSHconnect ssh_connection = null;
 		try {
 			ssh_connection = new SSHconnect(args); 
 		} catch (IOException e) {
     		e.printStackTrace();
-    		System.err.println("Couldn't read from configuration file: "+CONFIG_FILE+" must be in the same directory with SSHconnect.jar.\rRequired parameters must be defined in configuration file:\nhost\nuser\npassword\nremote_path.");
+    		System.err.println("Please chack file path.");
     		System.exit(1);
     	} catch (Exception e) {
     		e.printStackTrace();
     		System.exit(1);
-    	}
-		
+    	}	
 		
 		System.out.println(" finished.");
-		
-		
-		//detectPaths(basic_connection.local_path); //  on hold.
 		
 		try {
 			ssh_connection.makeConnect();
@@ -233,8 +231,6 @@ public class SSHclient {
 	}
 
 	
-
-	
 	static class SSHconnect {
 	
 		// Initializing parameters with default values
@@ -285,15 +281,27 @@ public class SSHclient {
 	    	
 	    	// Read parameters from configuration file
 	    	Properties prop = new Properties();
+	    	
 	    	try {
-	    		prop.load(new FileInputStream(CONFIG_FILE));
+	    		String properties_string = FileUtils.readFileToString(new File(CONFIG_FILE),"UTF-8");
+	    		prop.load(new StringReader(properties_string.replace("\\","\\\\")));  // For Windows OS paths
+	    		//prop.load(new FileInputStream(CONFIG_FILE));
 	    	} catch (FileNotFoundException e) {
-	    		try {
-	    			prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
+	    		try {	    			
+	    			String path = SSHclient.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+	    			RESOURCE_PATH = URLDecoder.decode(path, "UTF-8");
+	    			RESOURCE_PATH = RESOURCE_PATH.substring(0,RESOURCE_PATH.lastIndexOf(File.separator, RESOURCE_PATH.length()-2)+1);
+	    			System.out.println("Looking for config file in " +RESOURCE_PATH +CONFIG_FILE );
+	    			String properties_string = FileUtils.readFileToString(new File(RESOURCE_PATH +CONFIG_FILE),"UTF-8");
+		    		prop.load(new StringReader(properties_string.replace("\\","\\\\")));
+	    			//prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
 	    		} catch (FileNotFoundException e2) {
 	    			System.out.println("Configuration file "+CONFIG_FILE+" not found. ");
 	    			setDefaults(prop); // initialize with sensible default values
-	    		}
+	    		} catch (URISyntaxException e1) {
+	    			System.out.println("Configuration file "+CONFIG_FILE+" not found. ");
+	    			setDefaults(prop);
+				}
 	    	}
 	    	
 	    	add_path = updateProperty(prop,"add_path");
@@ -341,7 +349,6 @@ public class SSHclient {
 			this.remote_tmp = this.remote_path + "/" + this.tmp_dir;
 			this.remote_tmp = this.remote_tmp.replaceAll("//", "/");	
 			
-	    	    		
 	    	archiver = new AppTar(local_path, file_filter);
 	    	// Append remote path with tmp directory and archive name directory	        
 	        archive_path = this.archiver.archiveName(local_path);  
@@ -387,7 +394,8 @@ public class SSHclient {
 		private String updateProperty(Properties prop, String property_name) {
 			String property = prop.getProperty(property_name);
 			if (property == null) return "";
-			property = property.replaceAll("\\s","");
+			if (property.indexOf(",")>=0) property = property.replaceAll("\\s","");
+			else property = property.trim();
 			return property;
 		}
 
@@ -764,7 +772,10 @@ public class SSHclient {
 					session.connect();
 				} catch (JSchException e) {
 					need_key_authentication = true;
-					System.out.print(" Password authentication failed. ");
+					if (password != null && password.length() > 0) {
+						System.out.print(" Password authentication failed. ");
+						System.err.println("Failed password authintication for "+user+":"+password+"@"+host+":"+port);
+					}
 				}
 			}
 			
@@ -777,7 +788,8 @@ public class SSHclient {
 					try {
 						session.connect();
 					} catch (JSchException je) {
-						System.err.println("Cannot pass key authentication. Check your user name, key and passphrase settings in configuration file.");
+						
+						System.err.println("Cannot pass key authentication. Check your user name, key and passphrase settings in configuration file.");						
 						throw je;
 					}
 					use_key_authentication = true;

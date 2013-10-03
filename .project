@@ -14,4 +14,10 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<variableList>
+		<variable>
+			<name>home</name>
+			<value>file:/Users/peterbryzgalov/work/workspaceJava/SSHconnect/sshconnect_conf.txt</value>
+		</variable>
+	</variableList>
 </projectDescription>

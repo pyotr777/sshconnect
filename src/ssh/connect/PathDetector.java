@@ -14,12 +14,11 @@ import org.apache.commons.io.LineIterator;
 public class PathDetector {
 	
 	private String local_path;
-	//private Pattern path_pattern1 = Pattern.compile("([a-zA-Z]:)?([\\\\/]{1}?[a-zA-Z0-9\\s\\._-]+[\\\\/]??)+"); // at least one slash or backslash in a word (char sequence between spaces)
 	private static String sp = File.separator;
 	String s; // file contents
 	
 	public PathDetector(String local_path) {
-		System.out.println("\nLooking for local path: " + local_path);
+		//System.out.println("\nLooking for local path: " + local_path);
 		this.local_path = local_path;
 	}
 	
@@ -37,8 +36,10 @@ public class PathDetector {
 			while (it.hasNext()) {
 				line_counter++;
 				s = it.nextLine();
+				//if (local_path.strpos(":"))
+				local_path = local_path.replaceAll("\\\\", "/");
 				if (s.matches(".*"+local_path+".*")) {
-					System.out.println("!!! LOCAL PATH DETECTED IN "+ file.getCanonicalPath()+"\nline "+line_counter+": "+s);
+					System.err.println("LOCAL PATH DETECTED in "+ file.getCanonicalPath()+"\nline "+line_counter+": "+s);
 				}
 			}
 		} finally {
