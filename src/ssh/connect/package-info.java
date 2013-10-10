@@ -1,11 +1,12 @@
 /**
- *  v.1.01
- *  2013.10.03
+ *  v.1.02
+ *  2013.10.10
  * 
  * 
  *  Last added features:
  * 
- * Corrected error with Windows file paths. Need testing.
+ * Catching exceptions if no X11 present ("No X11 DISPLAY variable was set, but this program performed an operation which requires it.")
+ * Corrected error with Windows file paths. 
  * File filter arg parameter correction to exclude original Absolute path files. 
  * Removed function: "Replace spaces in source folder name on the server before building project."
  * Local path detection in files: gives warning.

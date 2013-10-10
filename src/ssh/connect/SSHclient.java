@@ -31,6 +31,7 @@ import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.SftpProgressMonitor;
 import com.jcraft.jsch.UserInfo;
 import com.trilead.ssh2.Connection;
+import com.trilead.ssh2.ConnectionInfo;
 import com.trilead.ssh2.Session;
 import com.trilead.ssh2.StreamGobbler;
 
@@ -45,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.01";
+	private static final String VERSION ="1.02";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -418,6 +419,7 @@ public class SSHclient {
 		 * @throws NullPointerException
 		 */
 		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException, Exception {
+			
 			// 1.
 			// JSch connect
 			// get a new session    
@@ -425,10 +427,11 @@ public class SSHclient {
 			session = new_session();
 			System.out.println(" Authenticated.");
 
+			// Orion connect
 			System.out.print("Creating connection to "+host+":"+port+"...");
 			Connection orion_conn = newOrionConnection();
 			System.out.println(" Authenticated.");
-			
+		
 			try {
 				channel=session.openChannel("sftp");
 				channel.connect();
@@ -482,7 +485,9 @@ public class SSHclient {
 				// 8.
 				//Remove remote temporary directory and archive				
 				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);				
+				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
+			} catch (Exception e) {
+				e.printStackTrace();
 			} finally {
 				System.out.println("Closing connections.");
 				//orionSSH
@@ -517,11 +522,7 @@ public class SSHclient {
 
 				if (isAuthenticated == false) {
 					System.out.print(" Password authentication ("+ user+":" + password+ ") failed.");
-					orion_conn.close();
-					if (key.length() < 1) {
-						// Cannot use key authentication. Password authentication failed. 
-						throw new IOException("Could not connect to "+host);
-					}
+					orion_conn.close();					
 				}
 			}
 			
@@ -529,18 +530,25 @@ public class SSHclient {
 				if (isAuthenticated == false) {
 					orion_conn.connect();
 					System.out.print(" Authenticating with key... ");
-					isAuthenticated = orion_conn.authenticateWithPublicKey(user, new File(key), passphrase);
+					File key_file = new File(key);
+					Boolean exists = key_file.exists();
+					if (exists) isAuthenticated = orion_conn.authenticateWithPublicKey(user, key_file, "");
+					if (!isAuthenticated) {
+						ConnectionInfo cinfo = orion_conn.getConnectionInfo();
+						System.out.println(cinfo.keyExchangeAlgorithm);
+					}
 					use_key_authentication = true;
 				}
 			}
 			catch (IOException e) {
+				e.printStackTrace();
 				orion_conn.close();
 				isAuthenticated = false;
 			}
 
 			if (isAuthenticated == false) {
-				System.out.println(" Failed.");
-				throw new IOException("Authentication with key "+key+"("+passphrase+") on server "+host+":" +port+" failed.");
+				System.out.println(" Failed.");				
+				throw new IOException("Authentication with key ("+key+") and passphrase ("+passphrase+") on server "+host+":" +port+" failed.");
 			}
 
 			return orion_conn;
@@ -781,20 +789,31 @@ public class SSHclient {
 			
 			if (need_key_authentication) {		        	
 				if (key.length() > 0) {	     
-					System.out.print(" Trying key authentication... ");
-					shell.addIdentity(new File(key).getAbsolutePath(), passphrase);
+					System.out.print(" Trying key authentication with "+key+" ... ");
+					File key_file = new File(key);
+					if (key_file.exists() == false) {
+						System.err.println("Key file "+key+" not found.");
+						throw new JSchException("Key authentication failed.");
+					}
+					shell.addIdentity(key_file.getAbsolutePath(), passphrase);
+					
 					session = shell.getSession(user, host, port);
 					session.setUserInfo(new SSHUserInfo());  
+					session.setConfig("StrictHostKeyChecking", "no");
 					try {
 						session.connect();
-					} catch (JSchException je) {
-						
-						System.err.println("Cannot pass key authentication. Check your user name, key and passphrase settings in configuration file.");						
+					} catch (JSchException je) {						
+						System.err.println("\nException on connection attempt to "+session.getHost()+":"+session.getPort()+". Check your user name ("+session.getUserName()+"), key ("+key_file.getAbsolutePath()+") and passphrase ("+passphrase+") settings.");						
 						throw je;
 					}
 					use_key_authentication = true;
 				} else {
-					throw new JSchException("Password authentication failed. No key provided.");
+					try {
+						session = shell.getSession(user, host, port);
+						session.connect();
+					} catch(Exception e) {
+						throw new JSchException("\nConnection failed. Check your user name ("+user+"), key ("+key+") and passphrase ("+passphrase+") settings.");
+					}
 				}
 			}
 			return session;

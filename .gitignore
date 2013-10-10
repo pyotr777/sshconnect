@@ -14,3 +14,4 @@ bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.ucls
 keys/*
 lib/jsch-0.1.50/src/*
+lib/orion-ssh2-214/*

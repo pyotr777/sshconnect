@@ -1,0 +1,15 @@
+add_path=/opt/xcalablemp/bin
+host=127.0.0.1
+port=3022
+user=sshuser  
+password=
+key=/Users/peterbryzgalov/.ssh/id_rsa
+passphrase=
+remote_path=/tmp
+local_path=/Users/peterbryzgalov/work/Kscope_projects/NICAM
+file_filter=*.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx
+build_command='./make me.sh'
+preprocess_files=Mkinclude
+
+
+-h kscope.aics.riken.jp -p 22 -u peter -k /Users/peterbryzgalov/.ssh/id_rsa_com -ap /opt/omnixmp/bin -rp /home/peter/ -m make -f  Makefile -lp /Users/peterbryzgalov/work/Kscope_projects/NICAM -pf Mkinclude -ff *.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx 

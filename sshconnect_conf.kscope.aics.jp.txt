@@ -1,0 +1,13 @@
+add_path=/opt/omnixmp/bin
+host=kscope.aics.riken.jp
+port=22
+user=peter  
+password=
+key=/Users/peterbryzgalov/.ssh/id_rsa_com
+passphrase=
+remote_path=/home/peter/
+local_path=/Users/peterbryzgalov/work/Kscope_projects/NICAM
+file_filter=*.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx
+build_command=make -f  Makefile
+preprocess_files=Mkinclude
+
