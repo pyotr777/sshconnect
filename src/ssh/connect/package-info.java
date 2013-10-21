@@ -1,10 +1,11 @@
 /**
- *  v.1.02
- *  2013.10.10
+ *  v.1.03
+ *  2013.10.21
  * 
  * 
  *  Last added features:
  * 
+ * Changes in diagnostic messages and key authentication for Orion.
  * Catching exceptions if no X11 present ("No X11 DISPLAY variable was set, but this program performed an operation which requires it.")
  * Corrected error with Windows file paths. 
  * File filter arg parameter correction to exclude original Absolute path files. 

@@ -15,3 +15,6 @@ bin/ssh/connect/SSHclient$SSHUserInfo.class
 keys/*
 lib/jsch-0.1.50/src/*
 lib/orion-ssh2-214/*
+sshconnect_conf.docker.txt
+sshconnect_conf.K.txt
+sshconnect_conf.tmp*

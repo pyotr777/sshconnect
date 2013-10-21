@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.02";
+	private static final String VERSION ="1.03";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -436,7 +436,7 @@ public class SSHclient {
 				channel=session.openChannel("sftp");
 				channel.connect();
 				sftp_channel=(ChannelSftp)channel;
-				System.out.println(" success.");
+				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
 				
 				//PathDetector pd = new PathDetector(local_path,remote_path,makefiles,null);
@@ -529,10 +529,10 @@ public class SSHclient {
 			try {
 				if (isAuthenticated == false) {
 					orion_conn.connect();
-					System.out.print(" Authenticating with key... ");
+					System.out.print(" Authenticating with key ... ");
 					File key_file = new File(key);
 					Boolean exists = key_file.exists();
-					if (exists) isAuthenticated = orion_conn.authenticateWithPublicKey(user, key_file, "");
+					if (exists) isAuthenticated = orion_conn.authenticateWithPublicKey(user, key_file, passphrase);
 					if (!isAuthenticated) {
 						ConnectionInfo cinfo = orion_conn.getConnectionInfo();
 						System.out.println(cinfo.keyExchangeAlgorithm);
@@ -621,7 +621,13 @@ public class SSHclient {
 	        		// Path does not exist
 	        		// Create new directory
 	        		exists = false;
-	        		sftp_channel.mkdir(remote_tmp);
+	        		try {
+	        			sftp_channel.mkdir(remote_tmp);
+	        		}
+	        		catch (SftpException es) {
+	        			System.err.println("Failed creating temporary folder "+ remote_tmp);
+	        			throw es;
+	        		}
 	        		attrs = sftp_channel.lstat(remote_tmp);
 	        	}
 	        	if (exists) {
