@@ -61,12 +61,13 @@
  *	-pf		preprocess_files	Files with placeholders that must be replaced with server-side absolute path before the project is built on the server
  * 
  * 
- *  Workflow:
- *  
- * Parse preprocess_files and replace placeholders. 
- * Upload source code to remote location.
+ * Algorithm
+ * 
+ * Establish SSH connection to the server.
+ * Parse files with absolute path replacement placeholders and replace placeholders with server-side absolute path. 
+ * Upload source code to the server.
  * Execute build command on the server.
- * Download product files (XML files).
+ * Download product files (XML) files. 
  * 
  */
 /**
