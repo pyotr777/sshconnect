@@ -1,6 +1,7 @@
 SSHconnect
 
-Copyright 2013 Bryzgalov Peter, AICS RIKEN
+Copyright 2013 RIKEN
+(Developed by Peter Bryzgalov, HPC Usability Research Team, AICS, RIKEN  petr dot bryzgalov at riken dot jp) 
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,17 +19,26 @@ limitations under the License.
 This product includes software developed by Kamran Zafar
 under the Apache License 2.0
 
+ JTar 1.1 (http://code.google.com/p/jtar/)
+
 This product includes software developed by Atsuhiko Yamanaka, JCraft,Inc.
 under BSD-like license.
 
+ JSch 0.1.50 (http://www.jcraft.com/jsch/)
+
 This product includes software developed by
 The Apache Software Foundation (http://www.apache.org/).
+
+ Apache Commons Lang Package Version 3.1 (http://commons.apache.org/proper/commons-lang/)
+ Apache Commons IO Version 2.4 (http://commons.apache.org/proper/commons-io/)
 
 This product includes software from the Spring Framework,
 under the Apache License 2.0
 
 This product includes Orion SSH2 developed by Trilead AG (http://www.trilead.com)
 under BSD license.
+
+ (http://sourceforge.net/apps/mediawiki/orion-ssh2/index.php?title=Main_Page)
 
 Orion SSH2 includes changes to Trilead SSH-2 for Java code base from Digmia
 Enterprise SSH, Copyright (c) Juraj Bednar. Juraj Bednar released his changes
