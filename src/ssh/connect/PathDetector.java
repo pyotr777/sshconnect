@@ -18,7 +18,6 @@ public class PathDetector {
 	String s; // file contents
 	
 	public PathDetector(String local_path) {
-		//System.out.println("\nLooking for local path: " + local_path);
 		this.local_path = local_path;
 	}
 	
@@ -39,7 +38,7 @@ public class PathDetector {
 				//if (local_path.strpos(":"))
 				local_path = local_path.replaceAll("\\\\", "/");
 				if (s.matches(".*"+local_path+".*")) {
-					System.err.println("LOCAL PATH DETECTED in "+ file.getCanonicalPath()+"\nline "+line_counter+": "+s);
+					System.err.println("Warning: Local path detected in "+ file.getCanonicalPath()+"\nline "+line_counter+": "+s);
 				}
 			}
 		} finally {

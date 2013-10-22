@@ -70,11 +70,8 @@ public class AppZip
 			zos = new ZipOutputStream(fos);
 			System.out.println("Creating Zip : " + zip_file.getCanonicalPath());
 			for(File file : this.file_list) {
-				//System.out.print(" file added : " + file);
 				ZipEntry ze= new ZipEntry(generateZipEntry(file.getAbsolutePath()));
 				ze.setTime(file.lastModified());
-				//Date modificationTime = new Date(ze.getTime());
-				//System.out.println("\t\t\t\t\t"+modificationTime);
 				zos.putNextEntry(ze);
 				FileInputStream in =  new FileInputStream(file);
 				try {

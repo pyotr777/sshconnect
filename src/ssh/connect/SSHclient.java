@@ -197,9 +197,6 @@ public class SSHclient {
         String normalized_abs_path = new File(abs_path).getCanonicalPath();
         String normalized_base_path = new File(base_path).getCanonicalPath();
         if (normalized_base_path.charAt(normalized_base_path.length()-1)!= File.separatorChar) normalized_base_path = normalized_base_path + File.separator;
-        
-        //System.out.println(normalized_abs_path + " vs " + normalized_base_path);
-        
         String relative_path = "";
         
         if (normalized_abs_path.indexOf(normalized_base_path) == 0) {
@@ -207,8 +204,7 @@ public class SSHclient {
         } else if (normalized_abs_path.indexOf(normalized_base_path) > 0) {
         	System.err.println("Something wrong with these paths: \nbase: " + base_path + "\nabs:  "+abs_path);
         	throw new IOException("Couldn't process these paths:\nnorm_base: "+normalized_base_path+"\nnorm_abs:  "+normalized_abs_path);
-        }
-        
+        }        
 		return relative_path;
 	}
 
@@ -286,7 +282,6 @@ public class SSHclient {
 	    	try {
 	    		String properties_string = FileUtils.readFileToString(new File(CONFIG_FILE),"UTF-8");
 	    		prop.load(new StringReader(properties_string.replace("\\","\\\\")));  // For Windows OS paths
-	    		//prop.load(new FileInputStream(CONFIG_FILE));
 	    	} catch (FileNotFoundException e) {
 	    		try {	    			
 	    			String path = SSHclient.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
@@ -295,7 +290,6 @@ public class SSHclient {
 	    			System.out.println("Looking for config file in " +RESOURCE_PATH +CONFIG_FILE );
 	    			String properties_string = FileUtils.readFileToString(new File(RESOURCE_PATH +CONFIG_FILE),"UTF-8");
 		    		prop.load(new StringReader(properties_string.replace("\\","\\\\")));
-	    			//prop.load(new FileInputStream(RESOURCE_PATH + CONFIG_FILE));
 	    		} catch (FileNotFoundException e2) {
 	    			System.out.println("Configuration file "+CONFIG_FILE+" not found. ");
 	    			setDefaults(prop); // initialize with sensible default values
@@ -590,8 +584,6 @@ public class SSHclient {
 				}    		
 			} finally 
 			{
-				//System.out.println("ExitCode: " + sess.getExitStatus());
-				//System.out.println("Connction:" +orion_conn.getConnectionInfo());
 				br.close();
 				sess.close();
 				if (verbose) {
@@ -723,7 +715,6 @@ public class SSHclient {
 	    		String placeholder_name = m.group(1);
 	    		if (placeholder_name.equals("remote_path")) {
 	    			new_s = m.replaceAll(remote_full_path);
-	    			//System.out.print(" inserted " +remote_full_path);
 	    		}
 	    	}
 	    	return new_s;
