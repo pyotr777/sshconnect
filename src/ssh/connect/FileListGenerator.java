@@ -4,15 +4,19 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.nio.file.*;
 
 public class FileListGenerator {
 	
 	private ArrayList<File> file_list;
 	FileFilter f_filter;
 	PathDetector p_detector;
+	private ArrayList<String> seen_path_list; // List of seen folders (paths)
 	
 	public FileListGenerator(String start_path, FileFilter f_filter) throws NullPointerException, IOException {
 		file_list = new ArrayList<File>();
+		seen_path_list = new ArrayList<String>(100);  
 		this.f_filter = f_filter;
 		if (start_path == null || start_path.length() < 1) throw new NullPointerException ("start_path is null or empty."); 
 		File start = new File(start_path);
@@ -49,10 +53,20 @@ public class FileListGenerator {
 		}
 
 		// Recursive call for directory
-		if (node.isDirectory()){
-			File[] subNodes = node.listFiles();
-			for(File file : subNodes){
-				generateFileList(file, f_filter);
+		if (node.isDirectory()) {
+			// Check for cross-directory links and loops
+			String canon_p = node.getCanonicalPath();
+			if (seen_path_list.contains(canon_p)) {
+				System.err.println("Already seen this path: " + canon_p);				
+			} 
+			else {
+				seen_path_list.add(canon_p);
+				
+				// Get list of files in folder
+				File[] subNodes = node.listFiles();
+				for(File file : subNodes){
+					generateFileList(file, f_filter);
+				}
 			}
 		}
 	}
