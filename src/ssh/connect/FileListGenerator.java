@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.nio.file.*;
 
 public class FileListGenerator {
@@ -44,8 +43,16 @@ public class FileListGenerator {
 	 * @throws NullPointerException 
 	 */
 	private void generateFileList(File node, FileFilter f_filter) throws NullPointerException, IOException {
+		if (Files.isSymbolicLink(node.toPath())) {
+			Path target_path=Files.readSymbolicLink(node.toPath());
+			System.out.println("Have symlink: "+node.toString() +" -> "+target_path.toString());
+			if (f_filter.filter(node)) return;
+			File real = node.toPath().toRealPath(LinkOption.NOFOLLOW_LINKS).toFile();
+			this.file_list.add(real);			
+    	}
+		
 		//add file only
-		if (node.isFile()){
+		else if (node.isFile()){
 			if (f_filter.filter(node)) return;
 			File file = node.getAbsoluteFile();
 			this.file_list.add(file);
@@ -53,7 +60,7 @@ public class FileListGenerator {
 		}
 
 		// Recursive call for directory
-		if (node.isDirectory()) {
+		else if (node.isDirectory()) {
 			// Check for cross-directory links and loops
 			String canon_p = node.getCanonicalPath();
 			if (seen_path_list.contains(canon_p)) {

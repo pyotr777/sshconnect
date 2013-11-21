@@ -21,4 +21,5 @@ lib/commons-io-2.4/docs/
 keys/*
 lib/jsch-0.1.50/src/*
 lib/orion-ssh2-214/*
+!sshconnect_conf.txt
 sshconnect_conf.*

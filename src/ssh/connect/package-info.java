@@ -1,10 +1,11 @@
 /**
- *  v.1.10
- *  2013.10.29
+ *  v.1.11
+ *  2013.11.21
  * 
  * 
  *  Last added features:
  * 
+ * Add symlinks to archive as is.
  * Switched to JDK 1.7 system library. Added check for folder link loops before creating tar archive. 
  * Changes in diagnostic messages and key authentication for Orion.
  * Catching exceptions if no X11 present ("No X11 DISPLAY variable was set, but this program performed an operation which requires it.")
