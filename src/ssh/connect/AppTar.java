@@ -78,7 +78,7 @@ public class AppTar
 		try{
 			FileOutputStream fos = new FileOutputStream(tar_file);
 			tos = new TarOutputStream( new BufferedOutputStream(fos));
-			System.out.println("Creating tar : " + tar_file.getCanonicalPath());
+			System.out.println("Creating tar : " + tar_file);
 			for(File file : this.file_list) {
 				System.out.print(" file added : " + file);
 				TarEntry te= new TarEntry(file, generateTarEntry(file.getAbsolutePath()));

@@ -10,7 +10,7 @@ public class FileListGenerator {
 	
 	private ArrayList<File> file_list;
 	FileFilter f_filter;
-	PathDetector p_detector;
+	//PathDetector p_detector;
 	private ArrayList<String> seen_path_list; // List of seen folders (paths)
 	
 	public FileListGenerator(String start_path, FileFilter f_filter) throws NullPointerException, IOException {
@@ -23,7 +23,7 @@ public class FileListGenerator {
 			throw new FileNotFoundException("Start path "+start_path+" is not found or not a directory");
 		}
 		
-		p_detector = new PathDetector(start_path);
+		//p_detector = new PathDetector(start_path);
 		generateFileList(start, f_filter);
 	}
 	
@@ -56,7 +56,7 @@ public class FileListGenerator {
 			if (f_filter.filter(node)) return;
 			File file = node.getAbsoluteFile();
 			this.file_list.add(file);
-			p_detector.detectPaths(file);
+			//p_detector.detectPaths(file);
 		}
 
 		// Recursive call for directory

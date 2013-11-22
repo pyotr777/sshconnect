@@ -8,21 +8,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Properties;
 import java.util.prefs.InvalidPreferencesFormatException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.ArrayUtils;
-
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -46,7 +38,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.11";
+	private static final String VERSION ="1.12docker";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -251,7 +243,6 @@ public class SSHclient {
 	    // command to execute
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
 	    
-	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
 	    private String default_archive_filename = "archive.zip"; 
 	    private AppTar archiver;  // Used for operations with archive
 	    
@@ -259,7 +250,7 @@ public class SSHclient {
 	    String tmp_dir = "";
 	    
 	    // Temporary directory: remote_tmp
-	    String remote_tmp = ""; 
+	    //String remote_tmp = ""; 
 	    	    
 	    // Source file filter.
 	    // Exclude selected file types.
@@ -311,9 +302,10 @@ public class SSHclient {
 	    	password = updateProperty(prop, "password"); // If password == "" authenticate with key.
 	    	key = updateProperty(prop,"key");
 	    	passphrase = updateProperty(prop,"passphrase");
-	    	remote_path = updateProperty(prop, "remote_path");	    	
 	    	build_command = updateProperty(prop, "build_command");	    	
-	    	local_path = updateProperty(prop, "local_path");  	    	
+	    	local_path = updateProperty(prop, "local_path");
+	    	remote_path = updateProperty(prop, "remote_path");
+	    	
 	    	String ff = updateProperty(prop, "file_filter");
 	    	// *.origin - reserved for original copies of edited make files.
 	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
@@ -331,24 +323,21 @@ public class SSHclient {
 			}
 	    	// Check important parameters
 			if (user.length() < 1) throw new InvalidPreferencesFormatException("'user' property not set. Set it in "+CONFIG_FILE+" or with command-line option -u. This is a required propery. Set ssh user name for connecting to remote server.");
-			if (remote_path.length() < 1) throw new InvalidPreferencesFormatException("'remote_path' property not set. Set it in in "+CONFIG_FILE+" or with command-line option -rp. This is a required propery. Set remote path on server to create temporary directories.");
-	    	
-			// Remote tmp directory name generation
-			try {
-				this.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, this.getTmpDirName(System.getProperty("user.name")));
-			} catch (UnsupportedEncodingException e1) {
-				e1.printStackTrace();
-			} catch (NoSuchAlgorithmException e1) {
-				e1.printStackTrace();
-			}
-			this.remote_tmp = this.remote_path + "/" + this.tmp_dir;
-			this.remote_tmp = this.remote_tmp.replaceAll("//", "/");	
+			
+			// Use same folder structure on server
+	    	if (remote_path==null || remote_path.length() < 1) {
+	    		if (local_path.length()<1) {
+	    			System.err.println("No local path specified.");
+	    			throw new IOException("No local path specified");
+	    		}
+	    		System.out.println("No remote path set ("+remote_path+"). Using same path as local:"+local_path);
+	    		remote_path = local_path.substring(0, local_path.lastIndexOf(File.separator));
+	    	}
 			
 	    	archiver = new AppTar(local_path, file_filter);
-	    	// Append remote path with tmp directory and archive name directory	        
-	        archive_path = this.archiver.archiveName(local_path);  
+	    	archive_path = this.archiver.archiveName(local_path);  
 		    archive = fileName(archive_path);
-		    remote_full_path = remote_tmp+"/" +noExtension(archive);
+		    remote_full_path = remote_path+"/" +noExtension(archive);
 	            		
     	}
     	
@@ -363,24 +352,7 @@ public class SSHclient {
 			prop.setProperty("file_filter", "*.zip,*.tar,.DS*,*.ksx");			
 		}
 
-		/**
-	     * Return hashcode of a string, adopted to use as a filename part
-	     * @param name - some string
-	     * @return hashcode
-	     * @throws UnsupportedEncodingException 
-	     * @throws NoSuchAlgorithmException 
-	     */
-		private Object getTmpDirName(String name) throws UnsupportedEncodingException, NoSuchAlgorithmException {
-			byte[] tmp_dir_name_bytes = name.getBytes("UTF-8");
-        	MessageDigest md = MessageDigest.getInstance("SHA-1");
-        	tmp_dir_name_bytes = md.digest(tmp_dir_name_bytes);
-        	String hash = URLEncoder.encode(tmp_dir_name_bytes.toString(),"UTF-8");
-        	hash = hash.replaceAll("[^\\w\\d-_]","");
-        	return hash;
-		}
-
-
-		/**
+		 /**
 		 * Return property value without space characters.
 		 * @param prop Property set.
 		 * @param property_name Name of a property.
@@ -447,9 +419,9 @@ public class SSHclient {
 				String path_command = "";
 				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
 				
-				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
+				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_path+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
 				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up xml files
@@ -478,8 +450,8 @@ public class SSHclient {
 				
 				// 8.
 				//Remove remote temporary directory and archive				
-				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
+				//System.out.println("Cleaning remote location: " + tmp_dir);
+				//executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -604,35 +576,40 @@ public class SSHclient {
 	    	// Check if remote directory exists
 	        // Method lstat throws SftpException if path does not exist
 	        SftpATTRS attrs = null;
-	        boolean exists = true;  // false - remote tmp directory doesn't exist (ordinary situation)
-	        int tmp_counter = 1;  // used to append to temporary directory name in case remote directory already exists before we created it.
-	        while (exists) {
-	        	try {
-	        		attrs = sftp_channel.lstat(remote_tmp);
-	        	} catch (SftpException e) {
-	        		// Path does not exist
-	        		// Create new directory
-	        		exists = false;
-	        		try {
-	        			sftp_channel.mkdir(remote_tmp);
-	        		}
-	        		catch (SftpException es) {
-	        			System.err.println("Failed creating temporary folder "+ remote_tmp);
-	        			throw es;
-	        		}
-	        		attrs = sftp_channel.lstat(remote_tmp);
-	        	}
-	        	if (exists) {
-	        		remote_tmp = remote_tmp +"_"+ tmp_counter;
-	        		tmp_counter++;
-	        	}
-	        }
+	        try {
+        		attrs = sftp_channel.lstat(remote_path);
+        	} catch (SftpException e) {
+        		// Path does not exist
+        		// Create new directory
+        		String inmaking="";
+        		try {
+        			System.out.println("Creating remote folder "+ remote_path);
+        			ArrayList<String> remote_paths = new ArrayList<String>();
+        			remote_paths = breakPath(remote_path,remote_paths);
+        			for (String next_path : remote_paths) {
+        				inmaking = next_path;
+        				try {
+        					attrs = sftp_channel.lstat(inmaking);
+        				} catch (SftpException es) {
+        					System.out.println("making "+ next_path);
+        					sftp_channel.mkdir(next_path);
+        				}
+        			}
+        			inmaking = remote_path;
+        			attrs = sftp_channel.lstat(inmaking);
+        		}
+        		catch (SftpException es) {
+        			System.err.println("Failed creating temporary folder "+ inmaking);
+        			throw es;
+        		}
+        		attrs = sftp_channel.lstat(remote_path);
+        	}	        
 	        
-	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_tmp+").");
+	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_path+").");
 	        
 	        SftpProgressMonitor monitor = new MyProgressMonitor();
 		    int mode=ChannelSftp.OVERWRITE;
-		    sftp_channel.cd(remote_tmp);
+		    sftp_channel.cd(remote_path);
 		    System.out.println("SFTP channel exit set at: " + sftp_channel.pwd());
 		    
 		    // Check if local path is valid
@@ -645,41 +622,13 @@ public class SSHclient {
 		    sftp_channel.lcd(local_path);
 		    System.out.println("SFTP channel entrance set at: " + sftp_channel.lpwd());
 		     
-		    // Parse make files
-		    if (preprocess_files.length() > 0) {
-		    	System.out.println("Preparing makefiles for upload to server.");
-		    	processfiles_list = getFilesList("", local_path, preprocess_files).split(";");
-		    	for (String makefile_path : processfiles_list) {
-		    		// Save original files
-		    		File makefile_org = new File(makefile_path);
-		    		File makefile_backup = new File(makefile_path+".origin");
-		    		System.out.println("Backing up "+makefile_org);
-		    		FileUtils.copyFile(makefile_org, makefile_backup);
-		    		System.out.print("Replacing placeholders: ");  
-		    		String s = FileUtils.readFileToString(makefile_org,"UTF-8");
-		    		try {
-		    			String s2 = replacePlaceholdersInMakefile(s);
-		    			if (s2.length() > 0) s = s2;
-		    		} catch (Exception e) {
-		    			e.printStackTrace();
-		    			throw new NullPointerException();
-		    		}
-		    		File parsed_makefile = saveString2File(s,makefile_path);
-		    		// Copy modification time
-		    		long mdate = makefile_backup.lastModified();
-		    		parsed_makefile.setLastModified(mdate);
-		    		
-		    		System.out.println(" finished."); 
-		    	}
-		    	System.out.println("Makefiles are ready.");
-		    }
-		    
 		    // Create  archive
 		    System.out.println("Packing files for transportation.");
 		    
 	    	File archive_file = new File(archive_path);
 	    	archiver.tarIt(archive_file);
 		    System.out.println("Uploading " + archive_path);		    
+		    
 		    if (archive_file.exists()) {
 			    FileInputStream file_stream = new FileInputStream(archive_file);
 			    sftp_channel.put(file_stream, archive, monitor, mode); 
@@ -690,7 +639,7 @@ public class SSHclient {
 		    archive_file.delete();
 		    
 		    // Restore original makefiles
-		    if (preprocess_files.length() > 0) {
+		    /*if (preprocess_files.length() > 0) {
 		    	for (String procfile_path : processfiles_list) {
 		    		File file_org = new File(procfile_path);
 		    		File file_backup = new File(procfile_path+".origin");
@@ -698,69 +647,33 @@ public class SSHclient {
 		    		FileUtils.copyFile(file_backup, file_org);
 		    		file_backup.delete();
 		    	}
-		    }
+		    }*/
 		    System.out.println(" ");
 		}
 
 	    /**
-	     * Replace placeholders matching pattern placeholder_pattern.
-	     * If pattern not found, returns empty string.
-	     * @param s
-	     * @return
+	     * Breaks path into subpaths from top down:
+	     * /folder1/folder2/folder3 ->
+	     * /folder1
+	     * /folder1/folder2
+	     * /folder1/folder2/folder3
+	     * @param remote_path_to_split: path to split
+	     * @param remote_paths: empty ArrayList of type String
+	     * @return ArrayList of paths as Strings
 	     */
-	    private String replacePlaceholdersInMakefile(String s) throws PatternSyntaxException, IllegalStateException, IndexOutOfBoundsException {
-	    	Matcher m = placeholder_pattern.matcher(s);
-	    	String new_s = "";
-	    	while (m.find()) {
-	    		String placeholder_name = m.group(1);
-	    		if (placeholder_name.equals("remote_path")) {
-	    			new_s = m.replaceAll(remote_full_path);
-	    		}
-	    	}
-	    	return new_s;
-		}
-	    
-	    /**
-	     * Saves string to a file
-	     * @param s
-	     * @return new File instance
-	     * @throws IOException 
-	     */
-	    private File saveString2File(String s, String full_path) throws IOException {
-	    	File file = new File(full_path);
-	    	file.createNewFile();
-	    	FileUtils.writeStringToFile(file, s, "UTF-8");
-	    	return file;
-	    }
-
-		/**
-	     * Get comma-separated list of full file paths, where file names are in comma-separated list filenames.
-	     * Search in path including subdirectories.
-	     * @param list	List of files found before
-	     * @param path	directory to search
-	     * @param filenames File names to include in the list
-	     * @return
-	     */
-		private String getFilesList(String list, String path, String filenames) throws NullPointerException {
-			File directory = new File(path);
-			//get all the files from a directory
-			File[] fList = directory.listFiles();
-			for (File file : fList){
-				if (file.isFile()) { 
-					String filename = file.getName();
-					int index = ArrayUtils.indexOf(filenames.split(","), filename);
-					if (index >= 0) {
-						if (list.length() > 0) list = list +"," +file.getAbsolutePath();
-						else list = file.getAbsolutePath();
-					}
-				} else if (file.isDirectory()){
-					getFilesList(list, file.getAbsolutePath(), filenames);
-				}
+	    private ArrayList<String> breakPath(String remote_path_to_split, ArrayList<String> remote_paths) {
+			String[] pieces = remote_path_to_split.split(File.separator);
+			String constructed_path = pieces[0];
+			if (constructed_path.length()>0) remote_paths.add(constructed_path);
+			for (int i=1; i < pieces.length; i++) {
+				constructed_path = constructed_path + File.separator + pieces[i];
+				if (pieces[i].length()>0) remote_paths.add(constructed_path);
 			}
-			return list;
+			return remote_paths;
 		}
 
-		private com.jcraft.jsch.Session new_session()  throws JSchException {
+			    
+	    private com.jcraft.jsch.Session new_session()  throws JSchException {
 			JSch shell = new JSch();
 			com.jcraft.jsch.Session session = shell.getSession(user, host, port);
 			boolean need_key_authentication = false;

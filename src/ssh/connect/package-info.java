@@ -1,10 +1,11 @@
 /**
- *  v.1.11
+ *  v.1.12docker
  *  2013.11.21
  * 
  * 
  *  Last added features:
  * 
+ * If remote path is not set in parameters (config file and command line), use same path as local.
  * Add symlinks to archive as is.
  * Switched to JDK 1.7 system library. Added check for folder link loops before creating tar archive. 
  * Changes in diagnostic messages and key authentication for Orion.
