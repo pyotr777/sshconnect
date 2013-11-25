@@ -1,12 +1,13 @@
 /**
- *  v.1.12docker
- *  2013.11.21
+ *  v.1.13jtar2
+ *  2013.11.25
  * 
  * 
  *  Last added features:
  * 
+ * Switched to jtar2 library, symlinks copied as symlinks to server.
  * If remote path is not set in parameters (config file and command line), use same path as local.
- * Add symlinks to archive as is.
+ * Detect symlinks.
  * Switched to JDK 1.7 system library. Added check for folder link loops before creating tar archive. 
  * Changes in diagnostic messages and key authentication for Orion.
  * Catching exceptions if no X11 present ("No X11 DISPLAY variable was set, but this program performed an operation which requires it.")
