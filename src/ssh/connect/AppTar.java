@@ -7,20 +7,22 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
 
-import org.xeustechnologies.jtar.TarEntry;
-import org.xeustechnologies.jtar.TarHeader;
-import org.xeustechnologies.jtar.TarOutputStream;
+import org.kamranzafar.jtar.TarEntry;
+import org.kamranzafar.jtar.TarHeader;
+import org.kamranzafar.jtar.TarOutputStream;
  
 
 /**
- * Ver.0.2
+ * Ver.1.0
  * 
- * Add files to zip archive
- *  * 
+ * Add files to tar archive.
+ * Use library JTar 2.1
+ * 
  * @author peterbryzgalov
  *
  */
@@ -73,14 +75,14 @@ public class AppTar
 	 * @param zipFile output ZIP file location
 	 */
 	public void tarIt(File tar_file) throws IOException, FileNotFoundException,SecurityException {
-		byte[] buffer = new byte[2048];
+		//byte[] buffer = new byte[2048];
 		TarOutputStream tos=null;
 		try{
 			FileOutputStream fos = new FileOutputStream(tar_file);
 			tos = new TarOutputStream( new BufferedOutputStream(fos));
-			System.out.println("Creating tar : " + tar_file.getCanonicalPath());
+			System.out.println("Creating tar " + tar_file + " with files:");
 			for(File file : this.file_list) {
-				System.out.print(" file added : " + file);
+				System.out.print(file);
 				TarEntry te= new TarEntry(file, generateTarEntry(file.getAbsolutePath()));
 				te.setModTime(file.lastModified());
 				Date modificationTime = te.getModTime();
@@ -91,19 +93,25 @@ public class AppTar
 				if (file.canExecute()) tar_header.mode = tar_header.mode | 0100; // add execute permission
 				if (file.canWrite()) tar_header.mode = tar_header.mode | 0400; // add write permission
 				else tar_header.mode = tar_header.mode & 0177577; // remove write permission
-				System.out.println("\t\t "+ Integer.toOctalString(tar_header.mode - 0100000));
-				tos.putNextEntry(te);
-				BufferedInputStream in =  new BufferedInputStream(new FileInputStream(file));
-				try {
-					int len;
-					while ((len = in.read(buffer)) != -1) {
-						tos.write(buffer, 0, len);
-					}
-				} finally {
-					in.close();
-				}
-				tos.flush();
-				in.close();
+				System.out.println("\t\t "+ Integer.toOctalString(tar_header.mode - 0100000)+"\t"+tar_header.size);
+				if (Files.isSymbolicLink(file.toPath())) {
+					tar_header.linkFlag=TarHeader.LF_SYMLINK;
+					String target_path = Files.readSymbolicLink(file.toPath()).toString();
+					tar_header.linkName=new StringBuffer(target_path);		
+					tar_header.size = 0;
+					tos.putNextEntry(new TarEntry(tar_header));					
+				} else {	
+					tos.putNextEntry(new TarEntry(tar_header));
+				    BufferedInputStream origin = new BufferedInputStream(new FileInputStream( file ));
+				    int count;
+				    byte data[] = new byte[2048];
+				  
+				    while((count = origin.read(data)) != -1) {
+				    	tos.write(data, 0, count);
+				    }
+				    origin.close();
+				}			    
+				tos.flush();				
 			}
 		} finally {   
 			tos.close();
@@ -130,7 +138,8 @@ public class AppTar
 	 * @return Formatted file path
 	 */
 	private String generateTarEntry(String file){
-		return file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
+		String path=file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
+		return path;
 	}
 	
 	/**
