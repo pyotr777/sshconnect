@@ -638,16 +638,6 @@ public class SSHclient {
 		    // Delete local archive file
 		    archive_file.delete();
 		    
-		    // Restore original makefiles
-		    /*if (preprocess_files.length() > 0) {
-		    	for (String procfile_path : processfiles_list) {
-		    		File file_org = new File(procfile_path);
-		    		File file_backup = new File(procfile_path+".origin");
-		    		System.out.println("Restore original "+file_org);
-		    		FileUtils.copyFile(file_backup, file_org);
-		    		file_backup.delete();
-		    	}
-		    }*/
 		    System.out.println(" ");
 		}
 

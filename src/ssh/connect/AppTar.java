@@ -1,19 +1,22 @@
 package ssh.connect;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.xeustechnologies.jtar.TarEntry;
-import org.xeustechnologies.jtar.TarHeader;
-import org.xeustechnologies.jtar.TarOutputStream;
+import org.kamranzafar.jtar.TarEntry;
+import org.kamranzafar.jtar.TarHeader;
+import org.kamranzafar.jtar.TarOutputStream;
  
 
 /**
@@ -73,7 +76,7 @@ public class AppTar
 	 * @param zipFile output ZIP file location
 	 */
 	public void tarIt(File tar_file) throws IOException, FileNotFoundException,SecurityException {
-		byte[] buffer = new byte[2048];
+		//byte[] buffer = new byte[2048];
 		TarOutputStream tos=null;
 		try{
 			FileOutputStream fos = new FileOutputStream(tar_file);
@@ -92,18 +95,35 @@ public class AppTar
 				if (file.canWrite()) tar_header.mode = tar_header.mode | 0400; // add write permission
 				else tar_header.mode = tar_header.mode & 0177577; // remove write permission
 				System.out.println("\t\t "+ Integer.toOctalString(tar_header.mode - 0100000));
-				tos.putNextEntry(te);
-				BufferedInputStream in =  new BufferedInputStream(new FileInputStream(file));
-				try {
-					int len;
-					while ((len = in.read(buffer)) != -1) {
-						tos.write(buffer, 0, len);
+				
+				if (Files.isSymbolicLink(file.toPath())) {
+					System.out.println("Have symlink "+file);
+					tar_header.linkFlag = TarHeader.LF_SYMLINK;
+					tos.putNextEntry(new TarEntry(tar_header));	
+					Path p = file.toPath();
+					Map<String,Object> attrs_map = Files.readAttributes(p, "*", LinkOption.NOFOLLOW_LINKS);
+					Iterator itr=attrs_map.entrySet().iterator();
+					while (itr.hasNext()) {
+						Map.Entry attr = (Map.Entry) itr.next();
+						System.out.println(attr.getKey() + " = " + attr.getValue());
 					}
-				} finally {
-					in.close();
-				}
+					Files.copy(p.toRealPath(LinkOption.NOFOLLOW_LINKS),tos);
+				} else {
+					Files.copy(file.toPath().toRealPath(LinkOption.NOFOLLOW_LINKS),tos);
+					tos.putNextEntry(te);
+					/*BufferedInputStream in =  new BufferedInputStream(new FileInputStream(file));
+					try {
+						int len;
+						while ((len = in.read(buffer)) != -1) {
+							tos.write(buffer, 0, len);
+						}
+					} finally {
+						in.close();
+					}
+					tos.flush();
+					in.close();*/
+				} 
 				tos.flush();
-				in.close();
 			}
 		} finally {   
 			tos.close();
@@ -130,7 +150,8 @@ public class AppTar
 	 * @return Formatted file path
 	 */
 	private String generateTarEntry(String file){
-		return file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
+		String path=file.substring(SOURCE_PATH_SKIP_LENGTH, file.length());
+		return path;
 	}
 	
 	/**
