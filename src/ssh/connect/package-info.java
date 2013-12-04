@@ -1,5 +1,5 @@
 /**
- *  v.1.13jtar2
+ *  v.1.13docker
  *  2013.11.25
  * 
  * 
@@ -62,7 +62,6 @@
  *	-ff		file_filter			Comma-separated list of common filename patters to exclude files from uploading to the server
  * Default is ".*,*.tar,*.html,*.zip,*.jpg.*.orgin".
  * 
- *	-pf		preprocess_files	Files with placeholders that must be replaced with server-side absolute path before the project is built on the server
  * 
  * 
  * Algorithm

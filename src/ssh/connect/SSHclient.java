@@ -38,7 +38,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.13jtar2";
+	private static final String VERSION ="1.13docker";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -153,11 +153,7 @@ public class SSHclient {
 				else if (args[i].equals("-ff")) {
 					ssh_connection.file_filter = args[i+1] +",*.origin";
 					i++;
-				} 
-				else if (args[i].equals("-pf")) {
-					ssh_connection.preprocess_files = trimApostrophe(args[i+1]);
-					i++;
-				} 
+				}				
 			}
 		}
 	}
@@ -238,8 +234,6 @@ public class SSHclient {
 	    String archive = "";
 	    String archive_path = "";
 	    
-	    // files to look for replacement placeholders
-	    String preprocess_files = "";  // priority value - from configuration file 
 	    // command to execute
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
 	    
@@ -309,9 +303,6 @@ public class SSHclient {
 	    	String ff = updateProperty(prop, "file_filter");
 	    	// *.origin - reserved for original copies of edited make files.
 	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
-	    	
-	    	// Files to look into for replacement pattern 
-	    	preprocess_files = updateProperty(prop, "preprocess_files");
 	    	
 	    	// set SSHconnect parameters from command-line arguments
 			try { 
