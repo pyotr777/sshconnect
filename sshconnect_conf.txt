@@ -1,12 +1,14 @@
 add_path=/opt/omnixmp/bin
-host=poweredge320.aics27.riken.jp
+host=kscope.aics.riken.jp
 port=22
-user=dockertest  
-password=dockertest
-key=
+user=peter  
+password=
+key=/Users/peterbryzgalov/.ssh/id_rsa_com
 passphrase=
-local_path=/Users/peterbryzgalov/work/Kscope_projects/NICAM
-remote_path=/tmp
+remote_path=/home/peter/
+local_path=/Users/peterbryzgalov/work/Kscope_projects/NICAM2
 file_filter=*.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx
-build_command=make -f Makefile
+build_command=make -f  Makefile
 preprocess_files=Mkinclude
+product_pattern=*.xml
+

@@ -1,10 +1,11 @@
 /**
- *  v.1.13
- *  2013.11.25
+ *  v.1.14
+ *  2013.12.04
  * 
  * 
  *  Last added features:
  * 
+ * Added parameter product_pattern for defining product files to download. Default: *.xml. Format: comma-separated list of simple file patterns, like: *.xml, *.java
  * Switched to jtar2 library, symlinks copied as symlinks to server.
  * Switched to JDK 1.7 system library. Added check for folder link loops before creating tar archive.
  * Changes in diagnostic messages and key authentication for Orion.

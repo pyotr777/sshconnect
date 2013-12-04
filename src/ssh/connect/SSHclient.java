@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.13";
+	private static final String VERSION ="1.14";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -166,11 +166,27 @@ public class SSHclient {
 					ssh_connection.preprocess_files = trimApostrophe(args[i+1]);
 					i++;
 				} 
+				else if (args[i].equals("-dp")) {
+					ssh_connection.simple_product_pattern = args[i+1];
+					ssh_connection.product_pattern = findPattern(ssh_connection.simple_product_pattern); 
+					i++;
+				} 
 			}
 		}
 	}
 	
+	/**
+	 * Transforms simple form of file patterns: *.ext,*.txt
+	 * to pattern for find command: -name "*.ext" -o -name "*.txt"
+	 * @param simple_pattern
+	 * @return
+	 */
 	
+	static String findPattern(String simple_pattern) {
+		String s = "-name \""+simple_pattern.replaceAll(",", "\" -o -name \"")+"\"";
+		return s;
+	}
+
 	/**
 	 * Remove single quotes around argument
 	 * @param arg
@@ -265,6 +281,8 @@ public class SSHclient {
 	    // Exclude selected file types.
 	    String file_filter = ".*,*.tar,*.html,*.zip,*.jpg.*.orgin";
 	    	    	    
+	    String product_pattern = "-name \"*.xml\"";
+	    String simple_product_pattern = "*.xml";
 	    
 	    // JSch parameters initialization
 	    com.jcraft.jsch.Session session = null;
@@ -315,6 +333,8 @@ public class SSHclient {
 	    	build_command = updateProperty(prop, "build_command");	    	
 	    	local_path = updateProperty(prop, "local_path");  	    	
 	    	String ff = updateProperty(prop, "file_filter");
+	    	simple_product_pattern = updateProperty(prop,"product_pattern");
+	    	product_pattern = findPattern(simple_product_pattern);
 	    	// *.origin - reserved for original copies of edited make files.
 	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
 	    	
@@ -452,12 +472,12 @@ public class SSHclient {
 				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
 				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
-				// 6. Pick up xml files
-				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find -name \"*.xml\"",true,false,true);
+				// 6. Pick up product files
+				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find "+product_pattern,true,false,true);
 				
-				// 7. Download XML files with JSch	        
+				// 7. Download product files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
-				System.out.print("Downloading "+(filenames.length-1) +" products to "+local_path+". ");
+				System.out.print("Downloading "+(filenames.length-1) +" products to "+local_path+". (Product pattern: "+ simple_product_pattern+") ");
 				for (String filename:filenames) {
 					if (filename.length() < 2) continue;
 					String remote_filename =remote_full_path+"/"+filename;
