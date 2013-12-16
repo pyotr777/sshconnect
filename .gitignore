@@ -11,6 +11,8 @@ Thumbs.db
 bin/ssh/connect/SSHclient$SSHbasic.class
 bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.png
+*.mgi
+*.mgc
 *.ucls
 .project
 .settings/*

@@ -1,10 +1,11 @@
 /**
- *  v.1.14
- *  2013.12.04
+ *  v.1.15
+ *  2013.12.16
  * 
  * 
  *  Last added features:
  * 
+ * Remove all comments from Absolute path files (preprocess files). Comments on the same path with placeholders caused extra white space in path error in atool.
  * Added parameter product_pattern for defining product files to download. Default: *.xml. Format: comma-separated list of simple file patterns, like: *.xml, *.java
  * Switched to jtar2 library, symlinks copied as symlinks to server.
  * Switched to JDK 1.7 system library. Added check for folder link loops before creating tar archive.

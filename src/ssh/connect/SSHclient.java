@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.14";
+	private static final String VERSION ="1.15";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -268,6 +268,7 @@ public class SSHclient {
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
 	    
 	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
+	    static private final Pattern comment_pattern = Pattern.compile("\\s*#.*");
 	    private String default_archive_filename = "archive.zip"; 
 	    private AppTar archiver;  // Used for operations with archive
 	    
@@ -736,6 +737,12 @@ public class SSHclient {
 	    		if (placeholder_name.equals("remote_path")) {
 	    			new_s = m.replaceAll(remote_full_path);
 	    		}
+	    	}
+	    	s = new_s;
+	    	m = comment_pattern.matcher(s);
+	    	new_s = "";
+	    	while (m.find()) {
+	    		new_s = m.replaceAll("");	    		
 	    	}
 	    	return new_s;
 		}

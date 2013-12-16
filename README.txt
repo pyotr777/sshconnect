@@ -1,4 +1,4 @@
- SSHconnect v1.03
+ SSHconnect v1.15
  
  Utility for remote command execution with automatic data transfer. 
  
@@ -41,6 +41,7 @@
  
 	-pf		Files with placeholders that must be replaced with server-side absolute path before the code is processed on the server (Configuration file parameter name is preprocess_files)
   	Absolute path replacement placeholder: "#[remote_path]" (without quotes).
+  	-dp		Comma-separated list of filename patterns to download product files after building source code. Example: "*.xml, *.h"
     
    
  Algorithm
@@ -52,12 +53,6 @@
  Download product files (XML) files. 
  
  
- Limitations etc.
- 
- 1. Product files must have .xml extension.
- 2. If there is a symlink loop in the source code directory structure, directories included in the loop will not be uploaded to the server.
- 
- 
  Used Libraries and Licenses
  
  Library								License
@@ -65,7 +60,7 @@
  Commons Lang Package Version 3.1		Apache License v2.0
  Apache Commons IO Version 2.4			Apache License v2.0
  JSch 0.1.50							BSD-like
- JTar 1.1	 							Apache License v2.0
+ JTar 2.1	 							Apache License v2.0
  Orion SSH2								BSD-like
 
  
