@@ -12,20 +12,30 @@ import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Properties;
 import java.util.prefs.InvalidPreferencesFormatException;
 import org.apache.commons.io.FileUtils;
+
+import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ChannelShell;
+import com.jcraft.jsch.IdentityRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.SftpProgressMonitor;
 import com.jcraft.jsch.UserInfo;
+import com.jcraft.jsch.agentproxy.*;
 import com.trilead.ssh2.Connection;
 import com.trilead.ssh2.ConnectionInfo;
 import com.trilead.ssh2.Session;
 import com.trilead.ssh2.StreamGobbler;
+import com.trilead.ssh2.auth.AgentIdentity;
+//import com.jcraft.jsch.agentproxy.TrileadAgentFactory;
+//import com.trilead.ssh2.auth.AgentProxy;
 
 
 /**
@@ -38,7 +48,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.13docker";
+	private static final String VERSION ="1.14docker";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -255,9 +265,11 @@ public class SSHclient {
 	    com.jcraft.jsch.Session session = null;
 	    int mode=ChannelSftp.OVERWRITE;
     	SftpProgressMonitor monitor = new MyProgressMonitor();
-    	com.jcraft.jsch.Channel channel = null;
+    	Channel channel = null;
     	ChannelSftp sftp_channel = null;
     	String[] processfiles_list = null;
+    	
+    	Connector con = null;
 	    
 	    public SSHconnect(String args[])  throws IOException, IllegalArgumentException, NoSuchAlgorithmException, InvalidPreferencesFormatException   {	
 	    	
@@ -375,26 +387,42 @@ public class SSHclient {
 		 * @throws SftpException
 		 * @throws NullPointerException
 		 */
-		public void makeConnect()  throws IOException, JSchException, SftpException, NullPointerException, Exception {
-			
+		public void makeConnect() throws IOException, JSchException, SftpException, NullPointerException, Exception {
+
 			// 1.
+
 			// JSch connect
-			// get a new session    
+			// get a new session
 			System.out.print("Opening SFTP channel...");
 			session = new_session();
 			System.out.println(" Authenticated.");
 
 			// Orion connect
-			System.out.print("Creating connection to "+host+":"+port+"...");
+			System.out.print("Creating Command connection to " + host + ":" + port+ "...");
 			Connection orion_conn = newOrionConnection();
 			System.out.println(" Authenticated.");
-		
+			executeOrionCommands(orion_conn, "whoami", true,true,true);
+					
+			
+			
 			try {
-				channel=session.openChannel("sftp");
-				channel.connect();
-				sftp_channel=(ChannelSftp)channel;
+				
+				channel = session.openChannel("shell");
+
+				// Enable agent-forwarding.
+				((ChannelShell)channel).setAgentForwarding(true);
+
+				//channel.setInputStream(System.in);			
+				//channel.setOutputStream(System.out);
+				channel.connect(3 * 1000);
+				
+				
+				sftp_channel=(ChannelSftp)session.openChannel("sftp");;
+				sftp_channel.setAgentForwarding(true);
+				sftp_channel.connect(3000);
 				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
+				if (true) throw new Exception("Stop");
 				
 				//PathDetector pd = new PathDetector(local_path,remote_path,makefiles,null);
 				//pd.detectPaths();
@@ -408,7 +436,7 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
+				if (add_path.length() > 0) path_command = "whoami; PATH=$PATH:'"+add_path+"' && ";
 				
 				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
@@ -451,24 +479,51 @@ public class SSHclient {
 				orion_conn.close();
 
 				//JSch
-				sftp_channel.exit();
-				channel.disconnect();  
-				session.disconnect();
+				if (sftp_channel != null) sftp_channel.exit();
+				if (channel != null) channel.disconnect();  
+				if (session != null) session.disconnect();
 
 				System.out.println("All tasks complete.");
 			}
 	    }
 
+		
+		private static class StderrLogger implements LogCallback {
+	        @Override
+	        public void log(int level, String s, Exception ex) {
+	            System.err.println(s);
+	            if(ex != null) {
+	                ex.printStackTrace(System.err);
+	            }
+	        }
+	    }
+		
+		static TrileadAgentProxy getAgentProxy() {
+			LogCallback logger = new StderrLogger();
+			try {
+				ConnectorFactory cf = ConnectorFactory.getDefault();
+				//cf.setPreferredUSocketFactories("jna");
+				Connector c = cf.createConnector();
+				return new TrileadAgentProxy(c);
+	        } catch(AgentProxyException e) {
+	        	System.err.println("ERROR: " + e.toString());
+	        	return null;
+	        }		    			
+		}
+
 		/**
 		 * @return
 		 * @throws IOException
 		 */
+		@SuppressWarnings("unused")
 		private Connection newOrionConnection() throws IOException {
 			// Orion SSH connection
+			
+			
 			Connection orion_conn = new Connection(host,port);
 			
 			boolean isAuthenticated = false;
-			if (!use_key_authentication) {
+			if (!use_key_authentication && password != null && password.length() > 0) {
 				orion_conn.connect();
 				try {
 					isAuthenticated = orion_conn.authenticateWithPassword(user, password);
@@ -477,12 +532,64 @@ public class SSHclient {
 					isAuthenticated = false;										
 				}
 
-				if (isAuthenticated == false) {
+				if (!isAuthenticated) {
 					System.out.print(" Password authentication ("+ user+":" + password+ ") failed.");
 					orion_conn.close();					
 				}
 			}
 			
+			
+			try {
+				if (!isAuthenticated) {
+					orion_conn.connect();
+					System.out.print(" Authenticating with agent ... ");
+					
+					// Authenticate with Agent proxy
+					com.trilead.ssh2.auth.AgentProxy agent_proxy = new TrileadAgentProxy(this.con);
+					if (agent_proxy == null) {
+			            System.err.println("ERROR: Unable to connect to SSH agent");
+			            System.exit(1);
+			        }
+					
+					/*System.out.println("Agent identities:");
+					Collection<AgentIdentity> c = agent_proxy.getIdentities();
+					for (AgentIdentity AI : c) {
+						System.out.println("-----\n"+AI.getAlgName());
+						//String s = Arrays.toString(AI.getPublicKeyBlob());
+						//String s = new String(AI.getPublicKeyBlob(),"UTF-8");
+						//System.out.println("\n"+s);
+					}*/
+					
+					//orion_conn.connect();
+					isAuthenticated = orion_conn.authenticateWithAgent(user, agent_proxy);
+			        if (isAuthenticated == false) {
+			            System.err.println("ERROR: Agent authentication not accepted");
+			            System.exit(1);
+			        } else {
+			        	System.out.print(" Authenticated using agent ");
+			        	ConnectionInfo cinfo = orion_conn.getConnectionInfo();
+						
+			        	Session sess = orion_conn.openSession();
+			        	sess.execCommand("ip addr show");
+			            BufferedReader br = new BufferedReader(new InputStreamReader(new StreamGobbler(sess.getStdout())));
+			            while(true) {
+			                String line = br.readLine();
+			                if(line == null) {
+			                    break;
+			                }
+			                System.out.println(line);
+			            }
+			            br.close();
+			            Integer exitStatus = sess.getExitStatus();
+			            //sess.close();
+			            
+			        }
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				orion_conn.close();
+				isAuthenticated = false;
+			}
 			try {
 				if (isAuthenticated == false) {
 					orion_conn.connect();
@@ -490,10 +597,7 @@ public class SSHclient {
 					File key_file = new File(key);
 					Boolean exists = key_file.exists();
 					if (exists) isAuthenticated = orion_conn.authenticateWithPublicKey(user, key_file, passphrase);
-					if (!isAuthenticated) {
-						ConnectionInfo cinfo = orion_conn.getConnectionInfo();
-						System.out.println(cinfo.keyExchangeAlgorithm);
-					}
+					
 					use_key_authentication = true;
 				}
 			}
@@ -678,9 +782,31 @@ public class SSHclient {
 				}
 			}
 			
-			if (need_key_authentication) {		        	
+			if (need_key_authentication) {
+				// Add remote identity repository
+				
+				try {
+					ConnectorFactory cf = ConnectorFactory.getDefault();
+					this.con = cf.createConnector();
+				} catch (AgentProxyException e) {
+					System.out.println(e);
+				}
+
+				if (this.con != null) {
+					RemoteIdentityRepository irepo =  new RemoteIdentityRepository(this.con);
+					shell.setIdentityRepository((IdentityRepository) irepo);
+				}
+				
+				// end repository
+				
+				session = shell.getSession(user, host, port);
+				session.setUserInfo(new SSHUserInfo());  
+				session.setConfig("StrictHostKeyChecking", "no");
+
 				if (key.length() > 0) {	     
 					System.out.print(" Trying key authentication with "+key+" ... ");
+					
+										
 					File key_file = new File(key);
 					if (key_file.exists() == false) {
 						System.err.println("Key file "+key+" not found.");
@@ -688,11 +814,9 @@ public class SSHclient {
 					}
 					shell.addIdentity(key_file.getAbsolutePath(), passphrase);
 					
-					session = shell.getSession(user, host, port);
-					session.setUserInfo(new SSHUserInfo());  
-					session.setConfig("StrictHostKeyChecking", "no");
+					
 					try {
-						session.connect();
+						session.connect(30000);
 					} catch (JSchException je) {						
 						System.err.println("\nException on connection attempt to "+session.getHost()+":"+session.getPort()+". Check your user name ("+session.getUserName()+"), key ("+key_file.getAbsolutePath()+") and passphrase ("+passphrase+") settings.");						
 						throw je;
@@ -700,8 +824,7 @@ public class SSHclient {
 					use_key_authentication = true;
 				} else {
 					try {
-						session = shell.getSession(user, host, port);
-						session.connect();
+						session.connect(3000);
 					} catch(Exception e) {
 						throw new JSchException("\nConnection failed. Check your user name ("+user+"), key ("+key+") and passphrase ("+passphrase+") settings.");
 					}
@@ -777,7 +900,7 @@ public class SSHclient {
             System.out.println(arg0);  
         }  
     }    
-
-    		   
+    
+	
 }
 
