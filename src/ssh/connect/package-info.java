@@ -1,10 +1,11 @@
 /**
- *  v.1.15
- *  2013.12.16
+ *  v.1.16
+ *  2013.12.17
  * 
  * 
  *  Last added features:
- * 
+ *  
+ * Add comand replacement pattern for use with "K" frontend.
  * Remove all comments from Absolute path files (preprocess files). Comments on the same path with placeholders caused extra white space in path error in atool.
  * Added parameter product_pattern for defining product files to download. Default: *.xml. Format: comma-separated list of simple file patterns, like: *.xml, *.java
  * Switched to jtar2 library, symlinks copied as symlinks to server.

@@ -19,7 +19,7 @@ limitations under the License.
 This product includes software developed by Kamran Zafar
 under the Apache License 2.0
 
- JTar 1.1 (http://code.google.com/p/jtar/)
+ JTar 2.1 (http://code.google.com/p/jtar/)
 
 This product includes software developed by Atsuhiko Yamanaka, JCraft,Inc.
 under BSD-like license.

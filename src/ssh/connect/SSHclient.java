@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.15";
+	private static final String VERSION ="1.16";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -171,6 +171,10 @@ public class SSHclient {
 					ssh_connection.product_pattern = findPattern(ssh_connection.simple_product_pattern); 
 					i++;
 				} 
+				else if (args[i].equals("-cp")) {
+					ssh_connection.command_pattern = args[i+1];
+					i++;
+				}
 			}
 		}
 	}
@@ -266,6 +270,8 @@ public class SSHclient {
 	    String preprocess_files = "";  // priority value - from configuration file 
 	    // command to execute
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
+	    String command_pattern = "::#";  // Command replacement pattern:  a:b:c. a replaced with b in commands. Then "#" is replaced with commands in c.
+	    // For use with K frontend use: "'::echo \'#\' | $SHELL -l"
 	    
 	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
 	    static private final Pattern comment_pattern = Pattern.compile("\\s*#.*");
@@ -341,6 +347,8 @@ public class SSHclient {
 	    	
 	    	// Files to look into for replacement pattern 
 	    	preprocess_files = updateProperty(prop, "preprocess_files");
+	    	String cp = updateProperty(prop,"command_pattern");
+	    	if (cp.length()>2) command_pattern = cp; 
 	    	
 	    	// set SSHconnect parameters from command-line arguments
 			try { 
@@ -468,13 +476,14 @@ public class SSHclient {
 				String path_command = "";
 				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
 				
-				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands(orion_conn, path_command+"echo path=$PATH && which frtpx; cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
-				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
+				if (archiver.replacedSpaces()) executeCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
+				executeCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up product files
-				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find "+product_pattern,true,false,true);
+				String str_response = executeCommands(orion_conn, "cd '"+remote_full_path+"' && echo --- && find "+product_pattern,true,false,true);
+				str_response=str_response.split("---\n")[1];
 				
 				// 7. Download product files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
@@ -483,7 +492,7 @@ public class SSHclient {
 					if (filename.length() < 2) continue;
 					String remote_filename =remote_full_path+"/"+filename;
 					String local_filename = local_path+"/" + filename;
-					//System.out.println("Downloading "+remote_filename+" to " + local_filename);
+					//System.out.print(" Downloading "+remote_filename+" to " + local_filename+ "... ");
 					try {
 						File local_file = new File(local_filename);
 						if (!local_file.exists()) {
@@ -500,7 +509,7 @@ public class SSHclient {
 				// 8.
 				//Remove remote temporary directory and archive				
 				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
+				executeCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -516,6 +525,28 @@ public class SSHclient {
 				System.out.println("All tasks complete.");
 			}
 	    }
+
+		private String executeCommands(Connection orion_conn, String commands, boolean b, boolean c, boolean d) throws IOException {
+			//commands = "'. ~/.bashrc; "+commands+"'";			
+			//commands = "echo \'"+ commands.replaceAll("'", "")+"\' | $SHELL -l";
+			
+			commands = translateCommands(commands);
+			return executeOrionCommands(orion_conn, commands, b,c,d);			
+		}
+
+		private String translateCommands(String commands) {
+			if (command_pattern == null || command_pattern=="") return commands;
+			String[] str = command_pattern.split(":");
+			if (str.length < 3) {
+				System.err.println("Invalid command replacement pattern: "+ command_pattern);
+				System.err.println("Should be:  \"a:b:c\". For each command before executing on server first 'a' is replaced with 'b' inside command body, then '#' is replaced with command inside c.");
+				System.err.println("Commands are being executed on server without any change.");
+				return commands;
+			}
+			commands = commands.replace(str[0], str[1]);
+			commands = str[2].replace("#", commands);
+			return commands;
+		}
 
 		/**
 		 * @return
@@ -581,9 +612,9 @@ public class SSHclient {
 		private String executeOrionCommands(Connection orion_conn, String commands, boolean display_stdout, boolean display_stderr,boolean verbose) throws IOException {
 			// Execute remote commands
 
-			if (verbose) System.out.println("Opening command session.");
+			if (verbose) System.out.print("Opening command session. ");
 			Session sess = orion_conn.openSession();
-			if (verbose) System.out.println("Command session start.\nExecuting: "+ commands.replaceAll("&&", ", "));
+			if (verbose) System.out.println("Command session start. Executing: "+ commands);
 			sess.execCommand(commands);
 			InputStream stdout = new StreamGobbler(sess.getStdout());
 			InputStream stderr = new StreamGobbler(sess.getStderr());

@@ -1,4 +1,4 @@
- SSHconnect v1.15
+ SSHconnect v1.16
  
  Utility for remote command execution with automatic data transfer. 
  
@@ -42,6 +42,10 @@
 	-pf		Files with placeholders that must be replaced with server-side absolute path before the code is processed on the server (Configuration file parameter name is preprocess_files)
   	Absolute path replacement placeholder: "#[remote_path]" (without quotes).
   	-dp		Comma-separated list of filename patterns to download product files after building source code. Example: "*.xml, *.h"
+  	-cp		Command replacement pattern. Must be used for SSHconnect to work with "K" front-end. 
+  			Command replacement pattern has the following format:  "a:b:c". 
+  			a is replaced with b in commands. Then "#" is replaced with commands in c.
+	 		For use with "K" front-end use: ':":echo \'#\' | $SHELL -l.
     
    
  Algorithm
