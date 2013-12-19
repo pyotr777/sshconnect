@@ -12,30 +12,24 @@ import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Properties;
 import java.util.prefs.InvalidPreferencesFormatException;
 import org.apache.commons.io.FileUtils;
 
 import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.IdentityRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.SftpProgressMonitor;
+import com.jcraft.jsch.StreamGobbler;
 import com.jcraft.jsch.UserInfo;
 import com.jcraft.jsch.agentproxy.*;
-import com.trilead.ssh2.Connection;
-import com.trilead.ssh2.ConnectionInfo;
-import com.trilead.ssh2.Session;
-import com.trilead.ssh2.StreamGobbler;
-import com.trilead.ssh2.auth.AgentIdentity;
-//import com.jcraft.jsch.agentproxy.TrileadAgentFactory;
-//import com.trilead.ssh2.auth.AgentProxy;
 
 
 /**
@@ -397,13 +391,6 @@ public class SSHclient {
 			session = new_session();
 			System.out.println(" Authenticated.");
 
-			// Orion connect
-			System.out.print("Creating Command connection to " + host + ":" + port+ "...");
-			Connection orion_conn = newOrionConnection();
-			System.out.println(" Authenticated.");
-			executeOrionCommands(orion_conn, "whoami", true,true,true);
-					
-			
 			
 			try {
 				
@@ -422,7 +409,7 @@ public class SSHclient {
 				sftp_channel.connect(3000);
 				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
-				if (true) throw new Exception("Stop");
+				//if (true) throw new Exception("Stop");
 				
 				//PathDetector pd = new PathDetector(local_path,remote_path,makefiles,null);
 				//pd.detectPaths();
@@ -437,14 +424,14 @@ public class SSHclient {
 				// 5. Execute Make command
 				String path_command = "";
 				if (add_path.length() > 0) path_command = "whoami; PATH=$PATH:'"+add_path+"' && ";
-				
-				executeOrionCommands(orion_conn, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeOrionCommands(orion_conn, "cd '"+remote_path+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
-				executeOrionCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
+				if (archiver.replacedSpaces()) executeCommands(session, "cd '"+remote_path+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
+				executeCommands(session, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up xml files
-				String str_response = executeOrionCommands(orion_conn, "cd '"+remote_full_path+"' && find -name \"*.xml\"",true,false,true);
+				String str_response = executeCommands(session, "cd '"+remote_full_path+"' && find -name \"*.xml\"",true,false,true);
 				
 				// 7. Download XML files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
@@ -475,9 +462,7 @@ public class SSHclient {
 				e.printStackTrace();
 			} finally {
 				System.out.println("Closing connections.");
-				//orionSSH
-				orion_conn.close();
-
+				
 				//JSch
 				if (sftp_channel != null) sftp_channel.exit();
 				if (channel != null) channel.disconnect();  
@@ -498,169 +483,57 @@ public class SSHclient {
 	        }
 	    }
 		
-		static TrileadAgentProxy getAgentProxy() {
-			LogCallback logger = new StderrLogger();
-			try {
-				ConnectorFactory cf = ConnectorFactory.getDefault();
-				//cf.setPreferredUSocketFactories("jna");
-				Connector c = cf.createConnector();
-				return new TrileadAgentProxy(c);
-	        } catch(AgentProxyException e) {
-	        	System.err.println("ERROR: " + e.toString());
-	        	return null;
-	        }		    			
-		}
+		
 
+				
 		/**
-		 * @return
-		 * @throws IOException
-		 */
-		@SuppressWarnings("unused")
-		private Connection newOrionConnection() throws IOException {
-			// Orion SSH connection
-			
-			
-			Connection orion_conn = new Connection(host,port);
-			
-			boolean isAuthenticated = false;
-			if (!use_key_authentication && password != null && password.length() > 0) {
-				orion_conn.connect();
-				try {
-					isAuthenticated = orion_conn.authenticateWithPassword(user, password);
-				}
-				catch (IOException e) {				
-					isAuthenticated = false;										
-				}
-
-				if (!isAuthenticated) {
-					System.out.print(" Password authentication ("+ user+":" + password+ ") failed.");
-					orion_conn.close();					
-				}
-			}
-			
-			
-			try {
-				if (!isAuthenticated) {
-					orion_conn.connect();
-					System.out.print(" Authenticating with agent ... ");
-					
-					// Authenticate with Agent proxy
-					com.trilead.ssh2.auth.AgentProxy agent_proxy = new TrileadAgentProxy(this.con);
-					if (agent_proxy == null) {
-			            System.err.println("ERROR: Unable to connect to SSH agent");
-			            System.exit(1);
-			        }
-					
-					/*System.out.println("Agent identities:");
-					Collection<AgentIdentity> c = agent_proxy.getIdentities();
-					for (AgentIdentity AI : c) {
-						System.out.println("-----\n"+AI.getAlgName());
-						//String s = Arrays.toString(AI.getPublicKeyBlob());
-						//String s = new String(AI.getPublicKeyBlob(),"UTF-8");
-						//System.out.println("\n"+s);
-					}*/
-					
-					//orion_conn.connect();
-					isAuthenticated = orion_conn.authenticateWithAgent(user, agent_proxy);
-			        if (isAuthenticated == false) {
-			            System.err.println("ERROR: Agent authentication not accepted");
-			            System.exit(1);
-			        } else {
-			        	System.out.print(" Authenticated using agent ");
-			        	ConnectionInfo cinfo = orion_conn.getConnectionInfo();
-						
-			        	Session sess = orion_conn.openSession();
-			        	sess.execCommand("ip addr show");
-			            BufferedReader br = new BufferedReader(new InputStreamReader(new StreamGobbler(sess.getStdout())));
-			            while(true) {
-			                String line = br.readLine();
-			                if(line == null) {
-			                    break;
-			                }
-			                System.out.println(line);
-			            }
-			            br.close();
-			            Integer exitStatus = sess.getExitStatus();
-			            //sess.close();
-			            
-			        }
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-				orion_conn.close();
-				isAuthenticated = false;
-			}
-			try {
-				if (isAuthenticated == false) {
-					orion_conn.connect();
-					System.out.print(" Authenticating with key ... ");
-					File key_file = new File(key);
-					Boolean exists = key_file.exists();
-					if (exists) isAuthenticated = orion_conn.authenticateWithPublicKey(user, key_file, passphrase);
-					
-					use_key_authentication = true;
-				}
-			}
-			catch (IOException e) {
-				e.printStackTrace();
-				orion_conn.close();
-				isAuthenticated = false;
-			}
-
-			if (isAuthenticated == false) {
-				System.out.println(" Failed.");				
-				throw new IOException("Authentication with key ("+key+") and passphrase ("+passphrase+") on server "+host+":" +port+" failed.");
-			}
-
-			return orion_conn;
-		}
-
-		/**
-		 * Execute remote commands over orionSSH connection
-		 * @param orion_conn Connection substance
+		 * Exeute command over Jsch connection
+		 * @param session	Jsch session instance
 		 * @param commands Commands to execute
 		 * @param display_stdout Set to true to display remote stdout
 		 * @param display_stderr Set to true to display remote stderr
 		 * @param verbose Set to true to display comments in stdout.
 		 * @throws IOException
+		 * @throws JSchException 
 		 */
-		private String executeOrionCommands(Connection orion_conn, String commands, boolean display_stdout, boolean display_stderr,boolean verbose) throws IOException {
-			// Execute remote commands
-
-			if (verbose) System.out.println("Opening command session.");
-			Session sess = orion_conn.openSession();
-			if (verbose) System.out.println("Command session start.\nExecuting: "+ commands.replaceAll("&&", ", "));
-			sess.execCommand(commands);
-			InputStream stdout = new StreamGobbler(sess.getStdout());
-			InputStream stderr = new StreamGobbler(sess.getStderr());
-			BufferedReader br = new BufferedReader(new InputStreamReader(stdout));
+		private String executeCommands(Session session, String commands, boolean display_stdout, boolean display_stderr,boolean verbose) throws IOException, JSchException {
+			Channel channel = session.openChannel("exec");
+			((ChannelExec) channel).setCommand(commands);
+			((ChannelExec) channel).setAgentForwarding(true);
+			channel.setInputStream(null);
+			((ChannelExec) channel).setErrStream(System.err);
+			InputStream in = channel.getInputStream();
+			channel.connect();
 			StringBuilder response = new StringBuilder();
-			// Read and display output
 			if (verbose && (display_stdout || display_stderr)) System.out.println("Command session report:\n----------------------------------");
-			if (display_stderr) {
+			/*if (display_stderr) {
 				(new stderrThread(stderr)).start(); // Display stderr in new thread
-			}
+			}*/
 			try {
-				while (true)
-				{
-					String line = br.readLine();
-					if (line == null)
-						break;
-					if (display_stdout) System.out.println(line);
-					response.append(line+"\n\r");
-				}    		
-			} finally 
-			{
-				br.close();
-				sess.close();
+				BufferedReader br = new BufferedReader(new InputStreamReader(new StreamGobbler(in)));
+				try {
+					while (true) {
+						String line = br.readLine();
+						if (line == null) {
+							break;
+						}
+						if (display_stdout) System.out.println(line);
+						response.append(line+"\n\r");
+					}
+				} finally {
+					br.close();
+				}
+			} finally {
+				channel.disconnect();
 				if (verbose) {
 					if (display_stdout || display_stderr) System.out.println("----------------------------------");
 					System.out.println("Session closed.");
 				}
 			}
 			return response.toString();
-		} 	
-	    
+		}
+		
+		
 	    /**
 	     * Archive source files and upload archive to remote directory.
 	     * Uses JSch library.
@@ -760,6 +633,7 @@ public class SSHclient {
 			    
 	    private com.jcraft.jsch.Session new_session()  throws JSchException {
 			JSch shell = new JSch();
+			JSch.setConfig("PreferredAuthentication", "publickey");
 			com.jcraft.jsch.Session session = shell.getSession(user, host, port);
 			boolean need_key_authentication = false;
 			
