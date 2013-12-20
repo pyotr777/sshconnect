@@ -43,9 +43,8 @@
   	Absolute path replacement placeholder: "#[remote_path]" (without quotes).
   	-dp		Comma-separated list of filename patterns to download product files after building source code. Example: "*.xml, *.h"
   	-cp		Command replacement pattern. Must be used for SSHconnect to work with "K" front-end. 
-  			Command replacement pattern has the following format:  "a:b:c". 
-  			a is replaced with b in commands. Then "#" is replaced with commands in c.
-	 		For use with "K" front-end use: ':":echo \'#\' | $SHELL -l.
+  			"#" in command pattern is replaced with commands, and resulting command stored in temporary shell script file, which is then executed on the server.
+	 		For use with "K" front-end use: pwd; echo '#' | $SHELL -l.
     
    
  Algorithm

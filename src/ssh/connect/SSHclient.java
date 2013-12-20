@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.16";
+	private static final String VERSION ="1.17";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -270,8 +270,8 @@ public class SSHclient {
 	    String preprocess_files = "";  // priority value - from configuration file 
 	    // command to execute
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
-	    String command_pattern = "::#";  // Command replacement pattern:  a:b:c. a replaced with b in commands. Then "#" is replaced with commands in c.
-	    // For use with K frontend use: "'::echo \'#\' | $SHELL -l"
+	    String command_pattern = "";  // Command replacement pattern:  "#" is replaced with commands, then pattern is executed
+	    // For use with K front-end use: "echo '#' | $SHELL -l" (without quotes)
 	    
 	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
 	    static private final Pattern comment_pattern = Pattern.compile("\\s*#.*");
@@ -297,7 +297,10 @@ public class SSHclient {
     	SftpProgressMonitor monitor = new MyProgressMonitor();
     	com.jcraft.jsch.Channel channel = null;
     	ChannelSftp sftp_channel = null;
-    	String[] processfiles_list = null;
+    	Boolean sftp_channel_ready = false;
+    	Connection orion_conn;
+
+        String[] processfiles_list = null;
 	    
 	    public SSHconnect(String args[])  throws IOException, IllegalArgumentException, NoSuchAlgorithmException, InvalidPreferencesFormatException   {	
 	    	
@@ -364,20 +367,20 @@ public class SSHclient {
 	    	
 			// Remote tmp directory name generation
 			try {
-				this.tmp_dir = String.format("tmp%d_%s", System.currentTimeMillis()/1000, this.getTmpDirName(System.getProperty("user.name")));
+				this.tmp_dir = String.format("tmp%s_%s", String.valueOf(System.currentTimeMillis()/1000).substring(4), this.getTmpDirName(System.getProperty("user.name")));
 			} catch (UnsupportedEncodingException e1) {
 				e1.printStackTrace();
 			} catch (NoSuchAlgorithmException e1) {
 				e1.printStackTrace();
 			}
-			this.remote_tmp = this.remote_path + "/" + this.tmp_dir;
+			this.remote_tmp = this.remote_path + "/" + this.tmp_dir + "/";
 			this.remote_tmp = this.remote_tmp.replaceAll("//", "/");	
 			
 	    	archiver = new AppTar(local_path, file_filter);
 	    	// Append remote path with tmp directory and archive name directory	        
 	        archive_path = this.archiver.archiveName(local_path);  
 		    archive = fileName(archive_path);
-		    remote_full_path = remote_tmp+"/" +noExtension(archive);
+		    remote_full_path = remote_tmp+noExtension(archive);
 	            		
     	}
     	
@@ -452,7 +455,7 @@ public class SSHclient {
 
 			// Orion connect
 			System.out.print("Creating connection to "+host+":"+port+"...");
-			Connection orion_conn = newOrionConnection();
+			orion_conn = newOrionConnection();
 			System.out.println(" Authenticated.");
 		
 			try {
@@ -462,9 +465,6 @@ public class SSHclient {
 				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
 				
-				//PathDetector pd = new PathDetector(local_path,remote_path,makefiles,null);
-				//pd.detectPaths();
-				//if (true) return;
 				
 				// 2. Create archive with source files,
 				// 3. Upload archive to temporary directory
@@ -474,16 +474,16 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
+				if (add_path.length() > 0) path_command = "export PATH='"+add_path+"':$PATH && ";
 				
-				executeCommands(orion_conn, path_command+"echo path=$PATH && which frtpx; cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands( path_command+"echo path=$PATH && which frtpx; cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeCommands(orion_conn, "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
-				executeCommands(orion_conn, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
+				if (archiver.replacedSpaces()) executeCommands( "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
+				executeCommands( path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up product files
-				String str_response = executeCommands(orion_conn, "cd '"+remote_full_path+"' && echo --- && find "+product_pattern,true,false,true);
-				str_response=str_response.split("---\n")[1];
+				String str_response = executeCommands( "cd '"+remote_full_path+"' && echo --- && find "+product_pattern,true,false,true,false);
+				if (str_response.indexOf("---\n") >= 0)str_response=str_response.split("---\n")[1];
 				
 				// 7. Download product files with JSch	        
 				String[] filenames = str_response.replaceAll("(\\s\\./)|(^\\./)", "").split("\n");		
@@ -497,7 +497,6 @@ public class SSHclient {
 						File local_file = new File(local_filename);
 						if (!local_file.exists()) {
 							local_file.getParentFile().mkdirs();
-							//local_file.createNewFile();
 						}
 						sftp_channel.get(remote_filename, local_filename, monitor, mode);	  
 					} catch (Exception e) {
@@ -509,7 +508,7 @@ public class SSHclient {
 				// 8.
 				//Remove remote temporary directory and archive				
 				System.out.println("Cleaning remote location: " + tmp_dir);
-				executeCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
+				executeCommands( "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false,false);	
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -526,26 +525,88 @@ public class SSHclient {
 			}
 	    }
 
-		private String executeCommands(Connection orion_conn, String commands, boolean b, boolean c, boolean d) throws IOException {
-			//commands = "'. ~/.bashrc; "+commands+"'";			
-			//commands = "echo \'"+ commands.replaceAll("'", "")+"\' | $SHELL -l";
-			
-			commands = translateCommands(commands);
-			return executeOrionCommands(orion_conn, commands, b,c,d);			
+		/**
+		 * Execute commands
+		 * @param display_stdout Set to true to display remote stdout
+		 * @param display_stderr Set to true to display remote stderr
+		 * @param verbose Set to true to display comments in stdout.
+		 * @param infile True - save commands into a file and execute it on server. False - execute commands on server without saving them to file.
+		 * @throws IOException
+		 * @throws SftpException 
+		 * */
+		private String executeCommands(String commands, boolean display_stdout, boolean display_stderr, boolean verbose,boolean infile) throws IOException, SftpException {
+			if (infile) return executeCommands(commands, display_stdout, display_stderr, verbose);
+			return executeOrionCommands(commands, display_stdout,display_stderr,verbose);			
 		}
 
-		private String translateCommands(String commands) {
-			if (command_pattern == null || command_pattern=="") return commands;
-			String[] str = command_pattern.split(":");
-			if (str.length < 3) {
-				System.err.println("Invalid command replacement pattern: "+ command_pattern);
-				System.err.println("Should be:  \"a:b:c\". For each command before executing on server first 'a' is replaced with 'b' inside command body, then '#' is replaced with command inside c.");
-				System.err.println("Commands are being executed on server without any change.");
-				return commands;
-			}
-			commands = commands.replace(str[0], str[1]);
-			commands = str[2].replace("#", commands);
-			return commands;
+		/**
+		 * Execute commands
+		 * @param display_stdout Set to true to display remote stdout
+		 * @param display_stderr Set to true to display remote stderr
+		 * @param verbose Set to true to display comments in stdout.
+		 * @throws IOException
+		 * @throws SftpException 
+		 * */
+		private String executeCommands(String commands, boolean display_stdout, boolean display_stderr, boolean verbose) throws IOException, SftpException {
+			if (command_pattern != null && command_pattern !="") return transportCommands(commands, display_stdout,  display_stderr,  verbose);
+			return executeOrionCommands(commands, display_stdout,display_stderr,verbose);			
+		}
+
+		/**
+		 * Save commands to a shell script file,
+		 * upload file to the server,
+		 * produce command for execution on server: substitute '#' in command_pattern with a call to the shell script,
+		 * execute command on the server,
+		 * delete script file from the server,
+		 * delete script file from local file system.
+		 * 
+		 * @param commands - commands to execute on server
+		 * @param display_stdout Set to true to display remote stdout
+		 * @param display_stderr Set to true to display remote stderr
+		 * @param verbose Set to true to display comments in stdout 
+		 * @return stdout of commands
+		 * @throws IOException 
+		 * @throws SftpException 
+		 */
+		private String transportCommands(String commands, boolean display_stdout, boolean display_stderr, boolean verbose) throws IOException, SftpException {
+			if (command_pattern == null || command_pattern=="") return executeOrionCommands(commands, display_stdout,display_stderr,verbose);
+			if (verbose) System.out.println("Executing commands: "+commands);
+			String output;
+			
+			// Generate script file name
+			File scriptfile;
+			String filename, absolute_path;
+			Double d = Math.floor(Math.random()*1000);
+			int n = d.intValue(); 
+			
+			do {
+				filename = "command"+String.valueOf(n)+".sh";
+				absolute_path = local_path + File.separator + filename;
+				scriptfile = new File(absolute_path);
+			} while (scriptfile.exists());
+			
+			
+			// Write commands to file
+			FileUtils.writeStringToFile(scriptfile, commands);
+			
+			// Upload			
+			FileInputStream file_stream = new FileInputStream(scriptfile);
+			if (verbose) System.out.print("Uploading... ");
+			sftp_channel.put(file_stream, filename, monitor, mode); 
+					    
+		    // Delete local script file
+		    scriptfile.delete();
+		    
+		    // Produce command to execute on server
+			String exec_shell_script = command_pattern.replace("#", "chmod +x "+filename+";./"+filename);
+			
+			// Executing
+			output = executeOrionCommands("cd "+remote_tmp+";"+exec_shell_script, display_stdout,display_stderr,verbose);
+			
+			// Removing file on server
+			if (verbose) System.out.println("Delete "+ filename+" on server");
+			executeOrionCommands( "cd "+remote_tmp+" && rm " + filename,true,true,false);
+			return output;
 		}
 
 		/**
@@ -609,19 +670,19 @@ public class SSHclient {
 		 * @param verbose Set to true to display comments in stdout.
 		 * @throws IOException
 		 */
-		private String executeOrionCommands(Connection orion_conn, String commands, boolean display_stdout, boolean display_stderr,boolean verbose) throws IOException {
+		private String executeOrionCommands(String commands, boolean display_stdout, boolean display_stderr,boolean verbose) throws IOException {
 			// Execute remote commands
 
 			if (verbose) System.out.print("Opening command session. ");
 			Session sess = orion_conn.openSession();
-			if (verbose) System.out.println("Command session start. Executing: "+ commands);
+			if (verbose) System.out.println("Command session start.\nExecuting: "+ commands);
 			sess.execCommand(commands);
 			InputStream stdout = new StreamGobbler(sess.getStdout());
 			InputStream stderr = new StreamGobbler(sess.getStderr());
 			BufferedReader br = new BufferedReader(new InputStreamReader(stdout));
 			StringBuilder response = new StringBuilder();
 			// Read and display output
-			if (verbose && (display_stdout || display_stderr)) System.out.println("Command session report:\n----------------------------------");
+			if (verbose && (display_stdout || display_stderr)) System.out.println("----------------------------------");
 			if (display_stderr) {
 				(new stderrThread(stderr)).start(); // Display stderr in new thread
 			}
@@ -639,8 +700,7 @@ public class SSHclient {
 				br.close();
 				sess.close();
 				if (verbose) {
-					if (display_stdout || display_stderr) System.out.println("----------------------------------");
-					System.out.println("Session closed.");
+					if (display_stdout || display_stderr) System.out.println("---------------------------------- .");
 				}
 			}
 			return response.toString();
@@ -653,49 +713,7 @@ public class SSHclient {
 	     * @throws IOException 
 	     */
 	    private void createArchiveAndUpload() throws SftpException, IOException, NullPointerException {
-	    	// Check if remote directory exists
-	        // Method lstat throws SftpException if path does not exist
-	        SftpATTRS attrs = null;
-	        boolean exists = true;  // false - remote tmp directory doesn't exist (ordinary situation)
-	        int tmp_counter = 1;  // used to append to temporary directory name in case remote directory already exists before we created it.
-	        while (exists) {
-	        	try {
-	        		attrs = sftp_channel.lstat(remote_tmp);
-	        	} catch (SftpException e) {
-	        		// Path does not exist
-	        		// Create new directory
-	        		exists = false;
-	        		try {
-	        			sftp_channel.mkdir(remote_tmp);
-	        		}
-	        		catch (SftpException es) {
-	        			System.err.println("Failed creating temporary folder "+ remote_tmp);
-	        			throw es;
-	        		}
-	        		attrs = sftp_channel.lstat(remote_tmp);
-	        	}
-	        	if (exists) {
-	        		remote_tmp = remote_tmp +"_"+ tmp_counter;
-	        		tmp_counter++;
-	        	}
-	        }
-	        
-	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_tmp+").");
-	        
-	        SftpProgressMonitor monitor = new MyProgressMonitor();
-		    int mode=ChannelSftp.OVERWRITE;
-		    sftp_channel.cd(remote_tmp);
-		    System.out.println("SFTP channel exit set at: " + sftp_channel.pwd());
-		    
-		    // Check if local path is valid
-		    try {
-		    	File local = new File(local_path);
-		    	if (!local.exists()) throw new IOException("Source path is does not exist: "+local_path);
-		    } catch (NullPointerException e) {
-		    	throw new IOException("Source path is not valid: "+local_path);
-		    }
-		    sftp_channel.lcd(local_path);
-		    System.out.println("SFTP channel entrance set at: " + sftp_channel.lpwd());
+	    	setupSFTPchannel();
 		     
 		    // Parse make files
 		    if (preprocess_files.length() > 0) {
@@ -752,6 +770,55 @@ public class SSHclient {
 		    	}
 		    }
 		    System.out.println(" ");
+		}
+
+		/**
+		 * @throws SftpException
+		 * @throws IOException
+		 */
+		private void setupSFTPchannel() throws SftpException, IOException {
+			// Check if remote directory exists
+	        // Method lstat throws SftpException if path does not exist
+	        SftpATTRS attrs = null;
+	        boolean exists = true;  // false - remote tmp directory doesn't exist (ordinary situation)
+	        int tmp_counter = 1;  // used to append to temporary directory name in case remote directory already exists before we created it.
+	        while (exists) {
+	        	try {
+	        		attrs = sftp_channel.lstat(remote_tmp);
+	        	} catch (SftpException e) {
+	        		// Path does not exist
+	        		// Create new directory
+	        		exists = false;
+	        		try {
+	        			sftp_channel.mkdir(remote_tmp);
+	        		}
+	        		catch (SftpException es) {
+	        			System.err.println("Failed creating temporary folder "+ remote_tmp);
+	        			throw es;
+	        		}
+	        		attrs = sftp_channel.lstat(remote_tmp);
+	        	}
+	        	if (exists) {
+	        		remote_tmp = remote_tmp +"_"+ tmp_counter;
+	        		tmp_counter++;
+	        	}
+	        }
+	        
+	        if (!attrs.isDir()) throw new SftpException(550, "Remote path is not a directory ("+remote_tmp+").");
+	        
+		    sftp_channel.cd(remote_tmp);
+		    System.out.println("SFTP channel exit set at: " + sftp_channel.pwd());
+		    
+		    // Check if local path is valid
+		    try {
+		    	File local = new File(local_path);
+		    	if (!local.exists()) throw new IOException("Source path is does not exist: "+local_path);
+		    } catch (NullPointerException e) {
+		    	throw new IOException("Source path is not valid: "+local_path);
+		    }
+		    sftp_channel.lcd(local_path);
+		    System.out.println("SFTP channel entrance set at: " + sftp_channel.lpwd());
+		    sftp_channel_ready = true;
 		}
 
 	    /**
