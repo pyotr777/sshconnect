@@ -164,28 +164,14 @@ public class AppTar
 
 
 	/**
-	 * True if we replaced spaces (false if there were no spaces) in source folder name
-	 * @return
-	 */
-	public boolean replacedSpaces() {
-		return this.renamed_folder;
-	}
-
-	/**
-	 * Return source folder name before replacing spaces in it.
+	 * Return source folder name
 	 * @return
 	 */
 	public String getOriginalFolder() {
 		return this.source_folder_name;
 	}
 
-	/**
-	 * Return source folder name after replacing spaces in it
-	 * @return
-	 */
-	public String getNewFolder() {
-		return this.new_folder;
-	}
+	
 }
 
 

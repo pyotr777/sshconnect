@@ -1,10 +1,11 @@
 /**
- *  v.1.17
- *  2013.12.20
+ *  v.1.18
+ *  2013.12.24
  * 
  * 
  * Last added features:
  *  
+ * Default command pattern changed: command_pattern = "echo '#' | $SHELL -l". Environment variable $PATH setting method changed to "exec env PATH=...:$PATH"  
  * Improved command replacement mechanism.
  * Add command replacement pattern for use with "K" front-end.
  * Remove all comments from Absolute path files (preprocess files). Comments on the same path with placeholders caused extra white space in path error in atool.

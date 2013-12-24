@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.17";
+	private static final String VERSION ="1.18";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -270,7 +270,7 @@ public class SSHclient {
 	    String preprocess_files = "";  // priority value - from configuration file 
 	    // command to execute
 	    String build_command = ""; // priority value - from command line 3rd argument (args[2])
-	    String command_pattern = "";  // Command replacement pattern:  "#" is replaced with commands, then pattern is executed
+	    String command_pattern = "echo '#' | $SHELL -l";  // Command replacement pattern:  "#" is replaced with commands, then pattern is executed
 	    // For use with K front-end use: "echo '#' | $SHELL -l" (without quotes)
 	    
 	    static private final Pattern placeholder_pattern = Pattern.compile("#\\[([\\w\\d\\-_]*)\\]");
@@ -344,9 +344,9 @@ public class SSHclient {
 	    	local_path = updateProperty(prop, "local_path");  	    	
 	    	String ff = updateProperty(prop, "file_filter");
 	    	simple_product_pattern = updateProperty(prop,"product_pattern");
-	    	product_pattern = findPattern(simple_product_pattern);
-	    	// *.origin - reserved for original copies of edited make files.
-	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin";
+	    	if (simple_product_pattern.length() > 2) product_pattern = findPattern(simple_product_pattern);
+	    	
+	    	if (ff != null && ff.length() > 1) file_filter = ff +",*.origin"; // *.origin - reserved for original copies of edited make files.
 	    	
 	    	// Files to look into for replacement pattern 
 	    	preprocess_files = updateProperty(prop, "preprocess_files");
@@ -474,12 +474,13 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (add_path.length() > 0) path_command = "export PATH='"+add_path+"':$PATH && ";
+				if (add_path.length() > 0) path_command = "exec env PATH='"+add_path+"':$PATH ";
 				
-				executeCommands( path_command+"echo path=$PATH && which frtpx; cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands( "cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeCommands( "cd '"+remote_tmp+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
-				executeCommands( path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
+				executeCommands( "cd '"+remote_tmp+"'  && pwd ",true,true,true);
+				executeCommands( "cd '"+remote_full_path+ "'",true,true,false);
+				executeCommands( "cd '"+remote_full_path+ "'; "+path_command+ build_command,true,true,true);
 				
 				// 6. Pick up product files
 				String str_response = executeCommands( "cd '"+remote_full_path+"' && echo --- && find "+product_pattern,true,false,true,false);
@@ -598,7 +599,7 @@ public class SSHclient {
 		    scriptfile.delete();
 		    
 		    // Produce command to execute on server
-			String exec_shell_script = command_pattern.replace("#", "chmod +x "+filename+";./"+filename);
+			String exec_shell_script = command_pattern.replace("#", "pwd; chmod +x "+filename+";./"+filename);
 			
 			// Executing
 			output = executeOrionCommands("cd "+remote_tmp+";"+exec_shell_script, display_stdout,display_stderr,verbose);
