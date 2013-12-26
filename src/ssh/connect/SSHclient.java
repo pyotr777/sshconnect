@@ -424,7 +424,7 @@ public class SSHclient {
 				// 5. Execute Make command
 				String path_command = "";
 				if (add_path.length() > 0) path_command = "whoami; PATH=$PATH:'"+add_path+"' && ";
-				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				executeCommands(session,"ip addr show && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				// rename new Folder to match archive name (with replaced spaces)
 				if (archiver.replacedSpaces()) executeCommands(session, "cd '"+remote_path+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
