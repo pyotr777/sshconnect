@@ -38,9 +38,6 @@ public class AppTar
 	private int SOURCE_PATH_SKIP_LENGTH = 0;
 	
 	private String source_folder_name = "";
-	private boolean renamed_folder = false;
-	private String new_folder = ""; // store new folder name after removing spaces from the name
-	
 	Pattern filter_pattern = null;
 
 	AppTar(String source)  throws IOException {
