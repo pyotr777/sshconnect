@@ -426,8 +426,6 @@ public class SSHclient {
 				if (add_path.length() > 0) path_command = "whoami; PATH=$PATH:'"+add_path+"' && ";
 				executeCommands(session,"ip addr show && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
-				// rename new Folder to match archive name (with replaced spaces)
-				if (archiver.replacedSpaces()) executeCommands(session, "cd '"+remote_path+"'  && pwd && mv '"+archiver.getOriginalFolder()+ "' '"+archiver.getNewFolder() +"'",true,true,true);
 				executeCommands(session, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
 				// 6. Pick up xml files
@@ -456,8 +454,8 @@ public class SSHclient {
 				
 				// 8.
 				//Remove remote temporary directory and archive				
-				//System.out.println("Cleaning remote location: " + tmp_dir);
-				//executeOrionCommands(orion_conn, "cd "+remote_path+" && rm -r " + tmp_dir,false,false,false);	
+				System.out.println("Cleaning remote location: " + tmp_dir);
+				executeCommands(session, "cd "+remote_path+" && rm -r " + remote_full_path,false,false,false);	
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -473,19 +471,6 @@ public class SSHclient {
 	    }
 
 		
-		private static class StderrLogger implements LogCallback {
-	        @Override
-	        public void log(int level, String s, Exception ex) {
-	            System.err.println(s);
-	            if(ex != null) {
-	                ex.printStackTrace(System.err);
-	            }
-	        }
-	    }
-		
-		
-
-				
 		/**
 		 * Exeute command over Jsch connection
 		 * @param session	Jsch session instance
