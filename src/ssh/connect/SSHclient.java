@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.18";
+	private static final String VERSION ="1.19";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -473,14 +473,9 @@ public class SSHclient {
 
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
-				String path_command = "";
-				if (add_path.length() > 0) path_command = "exec env PATH='"+add_path+"':$PATH ";
 				
-				executeCommands( "cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
-				// rename new Folder to match archive name (with replaced spaces)
-				executeCommands( "cd '"+remote_tmp+"'  && pwd ",true,true,true);
-				executeCommands( "cd '"+remote_full_path+ "'",true,true,false);
-				executeCommands( "cd '"+remote_full_path+ "'; "+path_command+ build_command,true,true,true);
+				executeCommands( "cd '"+remote_tmp+"'  && pwd && tar -xvf '"+archive+"'", true,true,true,false); 
+				executeCommands( build_command,true,true,true);
 				
 				// 6. Pick up product files
 				String str_response = executeCommands( "cd '"+remote_full_path+"' && echo --- && find "+product_pattern,true,false,true,false);
@@ -561,7 +556,7 @@ public class SSHclient {
 		 * delete script file from the server,
 		 * delete script file from local file system.
 		 * 
-		 * @param commands - commands to execute on server
+		 * @param core_commands - commands to execute on server
 		 * @param display_stdout Set to true to display remote stdout
 		 * @param display_stderr Set to true to display remote stderr
 		 * @param verbose Set to true to display comments in stdout 
@@ -569,44 +564,79 @@ public class SSHclient {
 		 * @throws IOException 
 		 * @throws SftpException 
 		 */
-		private String transportCommands(String commands, boolean display_stdout, boolean display_stderr, boolean verbose) throws IOException, SftpException {
-			if (command_pattern == null || command_pattern=="") return executeOrionCommands(commands, display_stdout,display_stderr,verbose);
-			if (verbose) System.out.println("Executing commands: "+commands);
+		private String transportCommands(String core_commands, boolean display_stdout, boolean display_stderr, boolean verbose) throws IOException, SftpException {
+			if (command_pattern == null || command_pattern=="") return executeOrionCommands(core_commands, display_stdout,display_stderr,verbose);
+			if (verbose) System.out.print("Transporiting commands in files. Core commands: <<"+core_commands);
 			String output;
 			
-			// Generate script file name
-			File scriptfile;
-			String filename, absolute_path;
+			// Generate core_command_file name
+			File core_command_file;
+			String core_command_filename, absolute_path;
+			
 			Double d = Math.floor(Math.random()*1000);
 			int n = d.intValue(); 
 			
 			do {
-				filename = "command"+String.valueOf(n)+".sh";
-				absolute_path = local_path + File.separator + filename;
-				scriptfile = new File(absolute_path);
-			} while (scriptfile.exists());
+				core_command_filename = "core_command"+String.valueOf(n)+".sh";
+				absolute_path = this.local_path + File.separator + core_command_filename;
+				core_command_file = new File(absolute_path);
+				n++;
+			} while (core_command_file.exists());
+			if (verbose) System.out.println(">> in file "+core_command_filename);
 			
+			// Write core commands to file
+			FileUtils.writeStringToFile(core_command_file, "cd '"+remote_full_path+ "'; "+core_commands);
 			
-			// Write commands to file
-			FileUtils.writeStringToFile(scriptfile, commands);
+			// Environment command
+			String path_command = "";
+			if (add_path.length() > 0) path_command = "exec env PATH='"+add_path+"':$PATH ";
+			String env_command = "chmod +x "+core_command_filename+";"+ path_command+"./"+core_command_filename;
+			
+			// Generate env_command_file name
+			if (verbose) System.out.print("Environment commands: <<"+env_command);
+						
+			// Generate core_command_file name
+			File env_command_file;
+			String env_command_filename;
+			
+			d = Math.floor(Math.random()*1000);
+			n = d.intValue(); 
+			
+			do {
+				env_command_filename = "env_command"+String.valueOf(n)+".sh";
+				absolute_path = this.local_path + File.separator + env_command_filename;
+				env_command_file = new File(absolute_path);
+				n++;
+			} while (env_command_file.exists());
+			if (verbose) System.out.println(">> in file "+env_command_filename);
+			
+			// Write environment commands to file
+			FileUtils.writeStringToFile(env_command_file, env_command);
+			
 			
 			// Upload			
-			FileInputStream file_stream = new FileInputStream(scriptfile);
-			if (verbose) System.out.print("Uploading... ");
-			sftp_channel.put(file_stream, filename, monitor, mode); 
-					    
-		    // Delete local script file
-		    scriptfile.delete();
-		    
+			FileInputStream file_stream = new FileInputStream(core_command_file);
+			if (verbose) System.out.print("Uploading "+core_command_filename+"... ");
+			sftp_channel.put(file_stream, core_command_filename, monitor, mode);
+			
+			file_stream = new FileInputStream(env_command_file);
+			if (verbose) System.out.print("Uploading "+env_command_filename+"...");
+			sftp_channel.put(file_stream, env_command_filename, monitor, mode); 
+			if (verbose) System.out.println(" finished.");		    
+			
+		    // Delete local command files
+		    core_command_file.delete();
+			env_command_file.delete();
+			
 		    // Produce command to execute on server
-			String exec_shell_script = command_pattern.replace("#", "pwd; chmod +x "+filename+";./"+filename);
+			String shell_command = command_pattern.replace("#", "pwd; chmod +x "+env_command_filename+";./"+env_command_filename);
 			
 			// Executing
-			output = executeOrionCommands("cd "+remote_tmp+";"+exec_shell_script, display_stdout,display_stderr,verbose);
+			output = executeOrionCommands("cd "+remote_tmp+";"+shell_command, display_stdout,display_stderr,verbose);
 			
 			// Removing file on server
-			if (verbose) System.out.println("Delete "+ filename+" on server");
-			executeOrionCommands( "cd "+remote_tmp+" && rm " + filename,true,true,false);
+			if (verbose) System.out.println("Delete "+ core_command_filename+" on server");
+			executeOrionCommands( "cd "+remote_tmp+" && rm " + core_command_filename,true,true,false);
 			return output;
 		}
 

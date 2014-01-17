@@ -1,10 +1,14 @@
 /**
- *  v.1.18
- *  2013.12.24
+ *  v.1.19
+ *  2014.01.17
  * 
  * 
  * Last added features:
  *  
+ * Applied three-step command execution for build command: 
+ * 	1. build command is put into core_command_file.sh, 
+ * 	2. "chmod +x core_command_file.sh; exec env PATH=...:$PATH ./core_command_file.sh" is put into env_command_file.sh,
+ * 	3. '#' in command pattern is replaced with "chmod +x env_command_file.sh; ./env_command_file.sh" and command pattern is executed.   
  * Default command pattern changed: command_pattern = "echo '#' | $SHELL -l". Environment variable $PATH setting method changed to "exec env PATH=...:$PATH"  
  * Improved command replacement mechanism.
  * Add command replacement pattern for use with "K" front-end.
