@@ -234,6 +234,7 @@ public class SSHclient {
 	    String local_path = ""; 
 	    String remote_path = ""; 
 	    String remote_full_path = ""; // path including temporary directory and archive name without extension
+	    boolean remove_remote_path = false; // Set to true if path didn't exist and we created it
 	    String add_path = ""; // path to atool and F_Front
 	    String archive = "";
 	    String archive_path = "";
@@ -454,8 +455,12 @@ public class SSHclient {
 				
 				// 8.
 				//Remove remote temporary directory and archive				
-				System.out.println("Cleaning remote location: " + tmp_dir);
+				System.out.println("Cleaning remote location: " + remote_path);
 				executeCommands(session, "cd "+remote_path+" && rm -r " + remote_full_path,false,false,false);	
+				if (this.remove_remote_path) {
+					System.out.println("rm -rf " + remote_path);
+					executeCommands(session, "rm -rf " + remote_path,false,false,false);
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -472,7 +477,7 @@ public class SSHclient {
 
 		
 		/**
-		 * Exeute command over Jsch connection
+		 * Execute command over Jsch connection
 		 * @param session	Jsch session instance
 		 * @param commands Commands to execute
 		 * @param display_stdout Set to true to display remote stdout
@@ -548,8 +553,11 @@ public class SSHclient {
         					sftp_channel.mkdir(next_path);
         				}
         			}
+        			this.remove_remote_path = true;
+        			//  For now we delete only lowest folder.
+        			//  Better solution: record all folders we create, and remove them all after all tasks complete.        			
         			inmaking = remote_path;
-        			attrs = sftp_channel.lstat(inmaking);
+        			attrs = sftp_channel.lstat(inmaking);        			
         		}
         		catch (SftpException es) {
         			System.err.println("Failed creating temporary folder "+ inmaking);
