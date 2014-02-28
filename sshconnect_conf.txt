@@ -1,7 +1,7 @@
 add_path=/opt/omnixmp/bin
-host=poweredge320.aics27.riken.jp
+host=poweredge320.aics10.riken.jp
 port=22
-user=nicam  
+user=nic
 password=
 key=
 passphrase=

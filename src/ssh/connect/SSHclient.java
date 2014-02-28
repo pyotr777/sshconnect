@@ -1,5 +1,4 @@
 package ssh.connect;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -407,7 +406,7 @@ public class SSHclient {
 				
 				sftp_channel=(ChannelSftp)session.openChannel("sftp");;
 				sftp_channel.setAgentForwarding(true);
-				sftp_channel.connect(3000);
+				sftp_channel.connect(1000);
 				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
 				//if (true) throw new Exception("Stop");
