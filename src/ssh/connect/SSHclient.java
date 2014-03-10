@@ -18,7 +18,6 @@ import org.apache.commons.io.FileUtils;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.IdentityRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -41,7 +40,7 @@ import com.jcraft.jsch.agentproxy.*;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.14docker";
+	private static final String VERSION ="1.15docker";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -394,14 +393,12 @@ public class SSHclient {
 			
 			try {
 				
-				channel = session.openChannel("shell");
-
-				// Enable agent-forwarding.
-				((ChannelShell)channel).setAgentForwarding(true);
+				channel = session.openChannel("exec");
+				((ChannelExec)channel).setAgentForwarding(true);
 
 				//channel.setInputStream(System.in);			
 				//channel.setOutputStream(System.out);
-				channel.connect(3 * 1000);
+				channel.connect(1000);
 				
 				
 				sftp_channel=(ChannelSftp)session.openChannel("sftp");;
@@ -423,8 +420,8 @@ public class SSHclient {
 				// 4. Extract source files from archive on remote machine
 				// 5. Execute Make command
 				String path_command = "";
-				if (add_path.length() > 0) path_command = "whoami; PATH=$PATH:'"+add_path+"' && ";
-				executeCommands(session,"ip addr show && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
+				if (add_path.length() > 0) path_command = "PATH=$PATH:'"+add_path+"' && ";
+				executeCommands(session,"date; cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				executeCommands(session, path_command+"echo path=$PATH && cd '"+remote_path+"'  && pwd && tar -xvf '"+archive+"'", true,true,true); 
 				executeCommands(session, path_command+ "cd '"+remote_full_path+ "' && echo $PATH && which atool && " + build_command,true,true,true);
 				
@@ -469,7 +466,6 @@ public class SSHclient {
 				if (sftp_channel != null) sftp_channel.exit();
 				if (channel != null) channel.disconnect();  
 				if (session != null) session.disconnect();
-
 				System.out.println("All tasks complete.");
 			}
 	    }
@@ -494,7 +490,7 @@ public class SSHclient {
 			InputStream in = channel.getInputStream();
 			channel.connect();
 			StringBuilder response = new StringBuilder();
-			if (verbose && (display_stdout || display_stderr)) System.out.println("Command session report:\n----------------------------------");
+			if (verbose && (display_stdout || display_stderr)) System.out.println("EXEC:"+commands);
 			/*if (display_stderr) {
 				(new stderrThread(stderr)).start(); // Display stderr in new thread
 			}*/
