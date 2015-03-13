@@ -13,12 +13,7 @@ bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.mgi
 *.mgc
 *.ucls
-.settings/*
-lib/commons-lang3-3.1/apidocs/
-lib/commons-io-2.4/docs/
 keys/*
-lib/jsch-0.1.50/src/*
-lib/orion-ssh2-214/*
-
+!SSHconnect.jar
 !sshconnect_conf.txt
 sshconnect_conf.*
