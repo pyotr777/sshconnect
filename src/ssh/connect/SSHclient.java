@@ -1038,8 +1038,6 @@ public class SSHclient {
         public void showMessage(String arg0) {  
             System.out.println(arg0);  
         }  
-    }    
-
-    		   
+    }		   
 }
 
