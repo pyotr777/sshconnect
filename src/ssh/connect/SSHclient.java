@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.19";
+	private static final String VERSION ="1.21";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -117,15 +117,15 @@ public class SSHclient {
 					i++;
 				} 
 				else if (args[i].equals("-h")) {
-					ssh_connection.host = args[i+1];
+					ssh_connection.host = trimApostrophe(args[i+1]);
 					i++;
 				} 
 				else if (args[i].equals("-p")) {
-					ssh_connection.port = Integer.parseInt(args[i+1]);
+					ssh_connection.port = Integer.parseInt(trimApostrophe(args[i+1]));
 					i++;
 				} 
 				else if (args[i].equals("-u")) {
-					ssh_connection.user = args[i+1];
+					ssh_connection.user = trimApostrophe(args[i+1]);
 					i++;
 				} 
 				else if (args[i].equals("-pw")) {
@@ -159,7 +159,7 @@ public class SSHclient {
 					}
 				} 
 				else if (args[i].equals("-ff")) {
-					ssh_connection.file_filter = args[i+1] +",*.origin";
+					ssh_connection.file_filter = trimApostrophe(args[i+1]) +",*.origin";
 					i++;
 				} 
 				else if (args[i].equals("-pf")) {
@@ -167,12 +167,12 @@ public class SSHclient {
 					i++;
 				} 
 				else if (args[i].equals("-dp")) {
-					ssh_connection.simple_product_pattern = args[i+1];
+					ssh_connection.simple_product_pattern = trimApostrophe(args[i+1]);
 					ssh_connection.product_pattern = findPattern(ssh_connection.simple_product_pattern); 
 					i++;
 				} 
 				else if (args[i].equals("-cp")) {
-					ssh_connection.command_pattern = args[i+1];
+					ssh_connection.command_pattern = trimApostrophe(args[i+1]);
 					i++;
 				}
 			}
@@ -198,9 +198,7 @@ public class SSHclient {
 	 */
 	private static String trimApostrophe(String arg) {
 		arg = arg.trim();
-		int f_pos = arg.indexOf("'");
-		int l_pos = arg.lastIndexOf("'");
-		if (f_pos == 0 && l_pos == arg.length()-1) arg = arg.substring(1, arg.length()-1);
+		arg = arg.replaceAll("[\'\"]+", "");		
 		return arg;
 	}
 
@@ -313,6 +311,7 @@ public class SSHclient {
 	    	} catch (FileNotFoundException e) {
 	    		try {	    			
 	    			String path = SSHclient.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+	    			System.out.println("protection domain path " + path);
 	    			RESOURCE_PATH = URLDecoder.decode(path, "UTF-8");
 	    			RESOURCE_PATH = RESOURCE_PATH.substring(0,RESOURCE_PATH.lastIndexOf(File.separator, RESOURCE_PATH.length()-2)+1);
 	    			System.out.println("Looking for config file in " +RESOURCE_PATH +CONFIG_FILE );
