@@ -28,9 +28,10 @@ java -jar SSHconnect.jar [options]
     (Configuration file parameter name is add_path).		
 -h	Server host address (Configuration file parameter name is host)		
 -p	Server port number for SSH connection (Configuration file parameter name is port)
--u	User name for SSH connection authentication (Configuration file parameter name is user)		
+-u	User name for SSH connection authentication (Configuration file parameter name is user)	
 -pw	Password for SSH user (Configuration file parameter name is password)		
--k	Path to RSA key for authentication on the server (Configuration file parameter name is key) 		
+-k	Path to RSA key for authentication on the server (Configuration file parameter name 
+	is key) 		
 -ph	Passphrase for RSA key (Configuration file parameter name is passphrase)	
 ```
 
@@ -57,16 +58,17 @@ _Important notes on setting build_command:_
 -ff	Comma-separated list of common filename patters to exclude files from uploading to 
     the server (Configuration file parameter name is file_filter). 
     Default is ".*, *.tar, *.html, *.zip, *.jpg".
--pf	Files with placeholders that must be replaced with server-side absolute path before the code 
-    is processed on the server (Configuration file parameter name is preprocess_files). Absolute 
-    path replacement placeholder: "#[remote_path]" (without quotes).
--dp	Comma-separated list of filename patterns to download product files after building source code. 
-    Example: "*.xml, *.h"
+-pf	Files with placeholders that must be replaced with server-side absolute path before 
+	the code is processed on the server (Configuration file parameter name is preprocess_files).
+	Absolute path replacement placeholder: "#[remote_path]" (without quotes).
+-dp	Comma-separated list of filename patterns to download product files after building 
+	source code. 
+	Example: "*.xml, *.h"
 -cp	Command pattern. Default value is "echo '#' | $SHELL -l" (without double quotes). 
-    Command pattern is used to run build commands on "K" front-end with the purpose of initializing 
-    environment variables, and it also works with other servers. "#" in command pattern is replaced 
-    with commands, and resulting command stored in temporary shell script file, which is executed 
-    on the server before build command.
+	Command pattern is used to run build commands on "K" front-end with the purpose 
+	of initializing environment variables, and it also works with other servers. 
+	"#" in command pattern is replaced with commands, and resulting command stored 
+	in temporary shell script file, which is executed on the server before build command.
 ```    
    
 ## Algorithm
