@@ -32,14 +32,17 @@ java -jar SSHconnect.jar [options]
 -pw	Password for SSH user (Configuration file parameter name is password)		
 -k	Path to RSA key for authentication on the server (Configuration file parameter name is key) 		
 -ph	Passphrase for RSA key (Configuration file parameter name is passphrase)	
+```
 
 Password, key and passphrase are optional, but either password or key is necessary 
 for authentication on the server.
- 
+
+``` 
 -rp	Path on the server to be used for temporary files (Configuration file parameter 
     name is remote_path) 		
 -m	Command to be executed on the server for processing code (Configuration file parameter 
     name is build_command)
+```
 	
 _Important notes on setting build_command:_
 
@@ -47,17 +50,16 @@ _Important notes on setting build_command:_
     on the server PATH
 2. If build_command path has spaces, put single quotes around the path like this: 
     './makeproject 1.sh'
- 
+
+``` 
 -lp	Path to source files, also the place to download code processing results from the server 
     (Configuration file parameter name is local_path)	
 -ff	Comma-separated list of common filename patters to exclude files from uploading to 
     the server (Configuration file parameter name is file_filter). 
     Default is ".*, *.tar, *.html, *.zip, *.jpg".
- 
 -pf	Files with placeholders that must be replaced with server-side absolute path before the code 
     is processed on the server (Configuration file parameter name is preprocess_files). Absolute 
     path replacement placeholder: "#[remote_path]" (without quotes).
-  	
 -dp	Comma-separated list of filename patterns to download product files after building source code. 
     Example: "*.xml, *.h"
 -cp	Command pattern. Default value is "echo '#' | $SHELL -l" (without double quotes). 
@@ -65,7 +67,7 @@ _Important notes on setting build_command:_
     environment variables, and it also works with other servers. "#" in command pattern is replaced 
     with commands, and resulting command stored in temporary shell script file, which is executed 
     on the server before build command.
-    
+```    
    
 ## Algorithm
  
