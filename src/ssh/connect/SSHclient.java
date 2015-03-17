@@ -137,7 +137,7 @@ public class SSHclient {
 					i++;
 				} 
 				else if (args[i].equals("-ph")) {
-					ssh_connection.passphrase = args[i+1];
+					ssh_connection.passphrase = trimApostrophe(args[i+1]);
 					i++;
 				} 
 				else if (args[i].equals("-rp")) {
