@@ -1,12 +1,12 @@
 add_path=/opt/omnixmp/bin
 host=poweredge320.aics10.riken.jp
 port=22
-user=nic
+user=nic  
 password=
-key=
+key=/Users/peterbryzgalov/work/tmp/docker_rsa
 passphrase=
-local_path=/Users/peterbryzgalov/work/Kscope_projects/HIMENO
+local_path=/Users/peterbryzgalov/work/Kscope_projects/NICAM
+remote_path=/tmp/
 file_filter=*.tar,*.zip,*.html,*.o,*.xml,*.xmod,.DS*,*.ksx
 build_command=make
 product_pattern=*.xml
-command_pattern=
