@@ -1,9 +1,11 @@
 /**
- *  v.1.19
- *  2014.01.17
+ *  v.1.22
+ *  2015.05.28
  * 
  * 
  * Last added features:
+ * 
+ * 2015.05.28 (1.22) Updated JSch to 0.1.52
  *  
  * Applied three-step command execution for build command: 
  * 	1. build command is put into core_command_file.sh, 
@@ -78,7 +80,7 @@
  * Parse files with absolute path replacement placeholders and replace placeholders with server-side absolute path. 
  * Upload source code to the server.
  * Execute build command on the server.
- * Download product files (XML) files. 
+ * Download product files (XML) . 
  * 
  */
 /**

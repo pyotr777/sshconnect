@@ -46,7 +46,7 @@ import com.trilead.ssh2.StreamGobbler;
 
 public class SSHclient {
 	
-	private static final String VERSION ="1.21";
+	private static final String VERSION ="1.22";
 	public static final String CONFIG_FILE = "sshconnect_conf.txt";
 	public static String RESOURCE_PATH;  // used to find configuration file 
 	
@@ -112,7 +112,7 @@ public class SSHclient {
 
 		for (int i = 0; i < args.length; i++ ) {
 			if (args[i].indexOf("-")==0) {
-				if (args[i].equals("-ap")) {
+				if (args[i].equals("-a")) {
 					ssh_connection.add_path = trimApostrophe(args[i+1]);
 					i++;
 				} 
@@ -148,13 +148,13 @@ public class SSHclient {
 					ssh_connection.build_command = trimApostrophe(args[i+1]); // remove single quotes around argument
 					i++;
 				} 
-				else if (args[i].equals("-lp")) {
+				else if (args[i].equals("-l")) {
 					ssh_connection.local_path = trimApostrophe(args[i+1]);
 					File lp_file = new File(ssh_connection.local_path);
 					ssh_connection.local_path = lp_file.getCanonicalPath();
 					i++;
 					if (!checkPath(ssh_connection.local_path, true)) {
-						System.err.println("Input parameter "+args[i]+" ("+ssh_connection.local_path+") does not exist or is not a directory. Parameter after -lp option must be local directory path where source files are located.");
+						System.err.println("Input parameter "+args[i]+" ("+ssh_connection.local_path+") does not exist or is not a directory. Parameter after -l option must be local directory path where source files are located.");
 						throw new IllegalArgumentException();
 					}
 				} 
@@ -422,6 +422,7 @@ public class SSHclient {
 			if (property == null) return "";
 			if (property.indexOf(",")>=0) property = property.replaceAll("\\s","");
 			else property = property.trim();
+			property = SSHclient.trimApostrophe(property);
 			return property;
 		}
 
@@ -450,6 +451,7 @@ public class SSHclient {
 			// get a new session    
 			System.out.print("Opening SFTP channel...");
 			session = new_session();
+			session.setConfig("max_input_buffer_size", (new Integer(Integer.MAX_VALUE)).toString());
 			System.out.println(" Authenticated.");
 
 			// Orion connect
@@ -459,7 +461,9 @@ public class SSHclient {
 		
 			try {
 				channel=session.openChannel("sftp");
-				channel.connect();
+				System.out.print("Opening SFTP channel... ");
+				ChannelSftp channelSftp = (ChannelSftp) channel;
+				channelSftp.connect();
 				sftp_channel=(ChannelSftp)channel;
 				System.out.println("Channels open.");
 				try { Thread.sleep(500); } catch (Exception ee) { }
