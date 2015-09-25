@@ -7,6 +7,7 @@ Icon?
 ehthumbs.db
 Thumbs.db
 *.class
+bin
 bin/ssh/connect/SSHclient$SSHbasic.class
 bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.png
@@ -15,5 +16,5 @@ bin/ssh/connect/SSHclient$SSHUserInfo.class
 *.ucls
 keys/*
 !SSHconnect.jar
-!sshconnect_conf.txt
+sshconnect_conf.txt
 sshconnect_conf.*

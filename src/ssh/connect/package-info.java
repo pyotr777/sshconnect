@@ -1,9 +1,12 @@
 /**
- *  v.1.22
- *  2015.05.28
+ *  v.1.23
+ *  2015.09.25
  * 
  * 
  * Last added features:
+ * 
+ * 2015.09.25 (1.23) Introduced DEBUG environment variable for two level debug output: "high" - level 2, any other - level 1 (less debug output).
+ * Added cross-directory link check into adding symlinks procedure.   
  * 
  * 2015.05.28 (1.22) Updated JSch to 0.1.52
  *  

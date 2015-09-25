@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.nio.file.*;
 
 public class FileListGenerator {
+	private static boolean debug = (System.getenv("DEBUG")!= null); 
+	private static boolean debug_l2 = false;
 	
 	private ArrayList<File> file_list;
 	FileFilter f_filter;
@@ -14,6 +16,9 @@ public class FileListGenerator {
 	private ArrayList<String> seen_path_list; // List of seen folders (paths)
 	
 	public FileListGenerator(String start_path, FileFilter f_filter) throws NullPointerException, IOException {
+		if (debug) {
+			debug_l2 = (System.getenv("DEBUG").equalsIgnoreCase("high"));
+		}
 		file_list = new ArrayList<File>();
 		seen_path_list = new ArrayList<String>(100);  
 		this.f_filter = f_filter;
@@ -45,10 +50,17 @@ public class FileListGenerator {
 	private void generateFileList(File node, FileFilter f_filter) throws NullPointerException, IOException {
 		if (Files.isSymbolicLink(node.toPath())) {
 			Path target_path=Files.readSymbolicLink(node.toPath());
-			System.out.println("Have symlink: "+node.toString() +" -> "+target_path.toString());
+			if (debug) System.out.println("Have symlink: "+node.toString() +" -> "+target_path.toString());
 			if (f_filter.filter(node)) return;
 			File real = node.toPath().toRealPath(LinkOption.NOFOLLOW_LINKS).toFile();
-			this.file_list.add(real);			
+			String canon_p = real.getCanonicalPath();			
+			if (debug_l2) System.out.println("Checking path "+canon_p+" for cross-directory loops. Seen path: "+seen_path_list.toString());
+			if (seen_path_list.contains(canon_p)) {
+				if (debug) System.err.println("Already seen this path: " + canon_p);				
+			} else {
+				this.file_list.add(real);
+				if (debug) System.out.println("Added path "+ canon_p);
+			}
     	}
 		
 		//add file only
@@ -63,12 +75,13 @@ public class FileListGenerator {
 		else if (node.isDirectory()) {
 			// Check for cross-directory links and loops
 			String canon_p = node.getCanonicalPath();
+			if (debug_l2) System.out.println("Checking path "+canon_p+" for cross-directory loops. Seen path: "+seen_path_list.toString());
 			if (seen_path_list.contains(canon_p)) {
-				System.err.println("Already seen this path: " + canon_p);				
+				if (debug) System.err.println("Already seen this path: " + canon_p);				
 			} 
 			else {
 				seen_path_list.add(canon_p);
-				
+				if (debug) System.out.println("Added path "+ canon_p);
 				// Get list of files in folder
 				File[] subNodes = node.listFiles();
 				for(File file : subNodes){

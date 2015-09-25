@@ -1,4 +1,4 @@
-## SSHconnect v1.19
+## SSHconnect v1.23
  
 # Utility for remote command execution with automatic data transfer 
  
